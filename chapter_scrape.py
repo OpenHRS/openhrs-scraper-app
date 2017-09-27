@@ -4,10 +4,24 @@ import re
 from bs4 import BeautifulSoup as bs
 
 
+def cleanText(line):
+    """ Function that cleans up all known defects that may be in the html """
+    clean_text = line.get_text().replace(u'\xa0', "").strip()
+    clean_text = clean_text.replace('\r\n', ' ')
+    clean_text = clean_text.replace(u'\u2011', '-')
+
+    return clean_text
+
+
 def checkText(text):
     is_okay = True
 
     blacklist = ["CHAPTER", "Part", "Section"]
+
+    rgx_check = re.search('([A-Z])\. +(\w+)', text)
+
+    if rgx_check is not None:
+        is_okay = False
 
     for word in blacklist:
         if word in text:
@@ -15,52 +29,81 @@ def checkText(text):
         elif text == "":
             is_okay = False
 
+    if "REPEALED" in text:
+        is_okay = True
+
     return is_okay
 
 
+def append_section(Sections, chapter_section, section_title):
+    section = {"chapter": chapter_section[0],
+               "section": chapter_section[1],
+               "name": section_title}
+    Sections.append(section)
+    section_title = ""
+    chapter_section = ""
+
+
 def main():
-    baseURL = 'http://www.capitol.hawaii.gov/hrscurrent/Vol04_Ch0201-0257/HRS0205/HRS_0205-.htm'
+    baseURL = 'http://www.capitol.hawaii.gov/hrscurrent/Vol13_Ch0601-0676/HRS0601/HRS_0601-.htm'
     htmlToParse = requests.get(baseURL)
     soup = bs(htmlToParse.text, 'lxml')
 
-    Chapter = {"number": 205, "name": "Land Use Comission"}
+    Chapter = {"number": 205, "name": "Land Use Comission", "repealed": False}
+    Sections = []
 
+    # Prep the data by taking out the chapter title in bold
     bold_titles = soup .find_all('b')
     for bold_title in bold_titles:
+
+        if "REPEALED" in bold_title.get_text():
+            continue
+
         bold_title.decompose()
 
-    raw_sections = soup.find_all('p', {'class': 'RegularParagraphs'})
-
-    Sections = []
+    line_data = soup.find_all('p', {'class': 'RegularParagraphs'})
 
     curr_section_title = ""
     curr_chapter_section = ""
-    for raw_section in raw_sections:
-        clean_section = raw_section.get_text().replace(u'\xa0', "").strip()
-        clean_section = clean_section.replace('\r\n', ' ')
+    # Go through each line (<p> tags) and associate the data
+    for line in line_data:
+        clean_line = cleanText(line)
 
-        chapter_section_reg = re.search(
+        # Looks for statute code in Regex ex. 123-45.5
+        rgx_code = re.search(
             '(\d+|\w+)\-((\d+\.\d+\w+)|(\d+\.\d+)|(\d+\w+)|(\d+))',
-            raw_section.text)
+            clean_line)
 
-        if chapter_section_reg is not None:
+        if rgx_code is not None:
+            # If theres something being tracked already then append it
             if curr_section_title != "" and curr_chapter_section != "":
-                section = {"chapter": float(curr_chapter_section[0]),
-                           "section": float(curr_chapter_section[1]),
-                           "name": curr_section_title}
-                Sections.append(section)
-                curr_section_title = ""
-                curr_chapter_section = ""
+                append_section(Sections, curr_chapter_section,
+                               curr_section_title)
 
-            section_title = clean_section.replace(
-                chapter_section_reg.group(0) + ' ', '')
+            section_title = clean_line.replace(
+                rgx_code.group(0), '')
 
-            curr_section_title = section_title
-            curr_chapter_section = chapter_section_reg.group(0).split('-')
+            curr_section_title = section_title.strip()
+            curr_chapter_section = rgx_code.group(0).split('-')
 
-            #print(chapter + "-" + section + section_title)
-        elif checkText(clean_section):
-            curr_section_title += " " + clean_section
+            multiples = curr_section_title.split(' ')
+            if multiples[0] == ',':
+                # get the next section and make it REPEALED
+                # and append it
+                print("found a comma")
+            elif multiples[0] == 'to':
+                # get the next sections and make them REPEALED
+                # and append it
+                print("found a to")
+
+        elif checkText(clean_line):
+            curr_section_title += " " + clean_line
+
+    if curr_section_title != "" and curr_chapter_section != "":
+        append_section(Sections, curr_chapter_section,
+                       curr_section_title)
+    elif "REPEALED" in curr_section_title:
+        Chapter['repealed'] = curr_section_title
 
     Chapter["sections"] = Sections
     outfile = open('chapter_example.json', 'w')

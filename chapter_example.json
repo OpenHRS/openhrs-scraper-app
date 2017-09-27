@@ -1,201 +1,137 @@
 {
     "name": "Land Use Comission",
     "number": 205,
+    "repealed": false,
     "sections": [
         {
-            "chapter": 205.0,
-            "name": "Establishment of the commission",
-            "section": 1.0
+            "chapter": "601",
+            "name": "Judiciary",
+            "section": "1"
         },
         {
-            "chapter": 205.0,
-            "name": "Districting and classification of lands",
-            "section": 2.0
+            "chapter": "601",
+            "name": "Emergency period; suspension of deadlines",
+            "section": "1.5"
         },
         {
-            "chapter": 205.0,
-            "name": "Retention of district boundaries",
-            "section": 3.0
+            "chapter": "601",
+            "name": "Administration",
+            "section": "2"
         },
         {
-            "chapter": 205.0,
-            "name": "Amendments to district boundaries",
-            "section": 3.1
+            "chapter": "601",
+            "name": "Administrative director",
+            "section": "3"
         },
         {
-            "chapter": 205.0,
-            "name": "Reclassification of land contiguous to an agricultural district; approval conditions",
-            "section": 3.5
+            "chapter": "601",
+            "name": "Reporting of non-general fund information",
+            "section": "3.2"
         },
         {
-            "chapter": 205.0,
-            "name": "Amendments to district boundaries involving land areas greater than fifteen acres",
-            "section": 4.0
+            "chapter": "601",
+            "name": "Supreme court law library revolving fund",
+            "section": "3.5"
         },
         {
-            "chapter": 205.0,
-            "name": "Fees",
-            "section": 4.1
+            "chapter": "601",
+            "name": "Spouse and child abuse special account; judiciary",
+            "section": "3.6"
         },
         {
-            "chapter": 205.0,
-            "name": "Permissible uses within the agricultural districts",
-            "section": 4.5
+            "chapter": "601",
+            "name": "Judiciary computer system special fund",
+            "section": "3.7"
         },
         {
-            "chapter": 205.0,
-            "name": "Private restrictions on agricultural uses and activities; not allowed",
-            "section": 4.6
+            "chapter": "601",
+            "name": "Judicial council",
+            "section": "4"
         },
         {
-            "chapter": 205.0,
-            "name": "Zoning",
-            "section": 5.0
+            "chapter": "601",
+            "name": "Independence of judiciary",
+            "section": "5"
         },
         {
-            "chapter": 205.0,
-            "name": "to 5.3 Repealed",
-            "section": 5.1
-        },
-        {
-            "chapter": 205.0,
-            "name": "Special permit",
-            "section": 6.0
-        },
-        {
-            "chapter": 205.0,
-            "name": "Adoption, amendment or repeal of rules",
-            "section": 7.0
-        },
-        {
-            "chapter": 205.0,
-            "name": "Nonconforming uses",
-            "section": 8.0
-        },
-        {
-            "chapter": 205.0,
-            "name": "to 11 Repealed",
-            "section": 9.0
-        },
-        {
-            "chapter": 205.0,
-            "name": "Enforcement",
-            "section": 12.0
-        },
-        {
-            "chapter": 205.0,
-            "name": "Penalty for violation",
-            "section": 13.0
-        },
-        {
-            "chapter": 205.0,
+            "chapter": "601",
             "name": "Repealed",
-            "section": 14.0
+            "section": "6"
         },
         {
-            "chapter": 205.0,
-            "name": "Conflict",
-            "section": 15.0
+            "chapter": "601",
+            "name": "Disqualification of judge; relationship, pecuniary interest, previous judgment, bias or prejudice",
+            "section": "7"
         },
         {
-            "chapter": 205.0,
-            "name": "Compliance with the Hawaii state plan",
-            "section": 16.0
+            "chapter": "601",
+            "name": "Practice of law forbidden",
+            "section": "8"
         },
         {
-            "chapter": 205.0,
-            "name": "205-16.1, 16.2 Repealed",
-            "section": 16.1
+            "chapter": "601",
+            "name": "Same, other instances",
+            "section": "9"
         },
         {
-            "chapter": 205.0,
-            "name": "Land use commission decision-making criteria",
-            "section": 17.0
+            "chapter": "601",
+            "name": "to 12 Repealed",
+            "section": "10"
         },
         {
-            "chapter": 205.0,
-            "name": "Periodic review of districts",
-            "section": 18.0
+            "chapter": "601",
+            "name": "Publication of notices and process",
+            "section": "13"
         },
         {
-            "chapter": 205.0,
-            "name": "Contested cases",
-            "section": 19.0
+            "chapter": "601",
+            "name": "Repealed",
+            "section": "14"
         },
         {
-            "chapter": 205.0,
-            "name": "to 37 Repealed",
-            "section": 31.0
+            "chapter": "601",
+            "name": "Style of process",
+            "section": "15"
         },
         {
-            "chapter": 205.0,
-            "name": "Declaration of policy",
-            "section": 41.0
+            "chapter": "601",
+            "name": "Repealed",
+            "section": "16"
         },
         {
-            "chapter": 205.0,
-            "name": "Important agricultural lands; definition and objectives",
-            "section": 42.0
+            "chapter": "601",
+            "name": "Use of credit and debit cards to pay for court costs, fees, expenses, and other charges",
+            "section": "17"
         },
         {
-            "chapter": 205.0,
-            "name": "Important agricultural lands; policies",
-            "section": 43.0
+            "chapter": "601",
+            "name": "Collection of delinquent court-ordered payments",
+            "section": "17.5"
         },
         {
-            "chapter": 205.0,
-            "name": "Standards and criteria for the identification of important agricultural lands",
-            "section": 44.0
+            "chapter": "601",
+            "name": "Interest income",
+            "section": "18"
         },
         {
-            "chapter": 205.0,
-            "name": "Important agricultural lands; public lands",
-            "section": 44.5
+            "chapter": "601",
+            "name": "Court annexed arbitration program",
+            "section": "20"
         },
         {
-            "chapter": 205.0,
-            "name": "Petition by farmer or landowner",
-            "section": 45.0
+            "chapter": "601",
+            "name": "Substance abuse treatment monitoring program Sheriff",
+            "section": "21"
         },
         {
-            "chapter": 205.0,
-            "name": "Important agricultural land; farm dwellings and employee housing",
-            "section": 45.5
+            "chapter": "601",
+            "name": "to 38 Repealed Security Personnel",
+            "section": "31"
         },
         {
-            "chapter": 205.0,
-            "name": "Incentives for important agricultural lands",
-            "section": 46.0
-        },
-        {
-            "chapter": 205.0,
-            "name": "Agricultural processing facilities; permits; priority",
-            "section": 46.5
-        },
-        {
-            "chapter": 205.0,
-            "name": "Identification of important agricultural lands; county process",
-            "section": 47.0
-        },
-        {
-            "chapter": 205.0,
-            "name": "Receipt of maps of eligible important agricultural lands; land use commission",
-            "section": 48.0
-        },
-        {
-            "chapter": 205.0,
-            "name": "Designation of important agricultural lands; adoption of important agricultural lands maps",
-            "section": 49.0
-        },
-        {
-            "chapter": 205.0,
-            "name": "Standards and criteria for the reclassification or rezoning of important agricultural lands",
-            "section": 50.0
-        },
-        {
-            "chapter": 205.0,
-            "name": "Important agricultural lands; county ordinances",
-            "section": 51.0
+            "chapter": "601",
+            "name": "Repealed",
+            "section": "51"
         }
     ]
 }
