@@ -35,6 +35,63 @@ def checkText(text):
     return is_okay
 
 
+def floatstrip(x):
+    if x == int(x):
+        return str(int(x))
+    else:
+        return str(x)
+
+
+def checkMultiples(Sections, curr_chapter_section, curr_section_title):
+    found_multiples = False
+    chapter = curr_chapter_section[0]
+    section = curr_chapter_section[1]
+
+    multiples = curr_section_title.split(' ')
+
+    # Ex. 16, 20
+    if multiples[0] == ',':
+        try:
+
+            second_section = float(multiples[1])
+            second_section = floatstrip(second_section)
+
+            append_section(Sections, [chapter, section], 'Repealed')
+            append_section(Sections, [chapter, second_section], 'Repealed')
+
+        except ValueError:
+            print("Chapter-section: " + chapter +
+                  '-' + section + " may be broken")
+        found_multiples = True
+
+    # Ex. 16.5 to 16.8 REPEALED
+    elif multiples[0] == 'to':
+        try:
+            increment = 0
+            curr_section = float(section)
+            target_section = float(multiples[1])
+
+            # Check if the multiple sections will increment by 1 or .1
+            if target_section % 1 == 0:
+                increment = 1
+            elif target_section % .1 == 0:
+                increment = .1
+
+            if increment != 0:
+                while curr_section <= target_section:
+                    append_section(
+                        Sections, [chapter, floatstrip(curr_section)], 'Repealed')
+                    curr_section += increment
+
+            found_multiples = True
+
+        except ValueError:
+            print("Chapter-section: " + chapter +
+                  '-' + section + " may be broken")
+
+    return found_multiples
+
+
 def append_section(Sections, chapter_section, section_title):
     section = {"chapter": chapter_section[0],
                "section": chapter_section[1],
@@ -45,7 +102,7 @@ def append_section(Sections, chapter_section, section_title):
 
 
 def main():
-    baseURL = 'http://www.capitol.hawaii.gov/hrscurrent/Vol13_Ch0601-0676/HRS0601/HRS_0601-.htm'
+    baseURL = 'http://www.capitol.hawaii.gov/hrscurrent/Vol06_Ch0321-0344/HRS0321/HRS_0321-.htm'
     htmlToParse = requests.get(baseURL)
     soup = bs(htmlToParse.text, 'lxml')
 
@@ -53,10 +110,15 @@ def main():
     Sections = []
 
     # Prep the data by taking out the chapter title in bold
+    # Make sure to check bolded sections
     bold_titles = soup .find_all('b')
     for bold_title in bold_titles:
+        print(bold_title.get_text())
+        rgx_code = re.search(
+            '(\d+|\w+)\-((\d+\.\d+\w+)|(\d+\.\d+)|(\d+\w+)|(\d+))',
+            bold_title.get_text())
 
-        if "REPEALED" in bold_title.get_text():
+        if "REPEALED" in bold_title.get_text() or rgx_code is not None:
             continue
 
         bold_title.decompose()
@@ -86,15 +148,12 @@ def main():
             curr_section_title = section_title.strip()
             curr_chapter_section = rgx_code.group(0).split('-')
 
-            multiples = curr_section_title.split(' ')
-            if multiples[0] == ',':
-                # get the next section and make it REPEALED
-                # and append it
-                print("found a comma")
-            elif multiples[0] == 'to':
-                # get the next sections and make them REPEALED
-                # and append it
-                print("found a to")
+            found_multiples = checkMultiples(
+                Sections, curr_chapter_section, curr_section_title)
+
+            if found_multiples:
+                curr_section_title = ""
+                curr_chapter_section = ""
 
         elif checkText(clean_line):
             curr_section_title += " " + clean_line
