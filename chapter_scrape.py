@@ -59,8 +59,8 @@ def checkMultiples(Sections, curr_chapter_section, curr_section_name):
             second_section = float(multiples[1])
             second_section = floatstrip(second_section)
 
-            appendSection(Sections, [chapter, section], 'Repealed')
-            appendSection(Sections, [chapter, second_section], 'Repealed')
+            appendSection(Sections, section, 'Repealed')
+            appendSection(Sections, second_section, 'Repealed')
 
         except ValueError:
             print("Chapter-section: " + chapter +
@@ -83,7 +83,7 @@ def checkMultiples(Sections, curr_chapter_section, curr_section_name):
             if increment != 0:
                 while curr_section <= target_section:
                     appendSection(
-                        Sections, [chapter, floatstrip(curr_section)], 'Repealed')
+                        Sections, floatstrip(curr_section), 'Repealed')
                     curr_section += increment
 
             found_multiples = True
@@ -95,10 +95,9 @@ def checkMultiples(Sections, curr_chapter_section, curr_section_name):
     return found_multiples
 
 
-def appendSection(Sections, chapter_section, section_name):
+def appendSection(Sections, section, section_name):
     """ Appends a section to a parent Section list """
-    section = {"chapter": chapter_section[0],
-               "section": chapter_section[1],
+    section = {"number": section,
                "name": section_name}
     Sections.append(section)
 
@@ -144,7 +143,7 @@ def scrapeSectionNames(url):
         if rgx_code is not None:
             # If theres something being tracked already then append it
             if curr_section_name != "" and curr_chapter_section != "":
-                appendSection(Sections, curr_chapter_section,
+                appendSection(Sections, curr_chapter_section[1],
                               curr_section_name)
 
             # The section name is the currentline - the statute code
@@ -166,7 +165,7 @@ def scrapeSectionNames(url):
 
     # Check for anything left in the buffer
     if curr_section_name != "" and curr_chapter_section != "":
-        appendSection(Sections, curr_chapter_section,
+        appendSection(Sections, curr_chapter_section[1],
                       curr_section_name)
 
     # If nothing was scraped then the whoel chapter was actually repealed
