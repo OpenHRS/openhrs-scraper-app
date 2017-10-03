@@ -14,6 +14,7 @@ def cleanText(line):
 
 
 def checkText(text):
+    """ Compares a line to see if there are any blacklisted words"""
     is_okay = True
 
     blacklist = ["CHAPTER", "Part", "Section"]
@@ -36,6 +37,7 @@ def checkText(text):
 
 
 def floatstrip(x):
+    """ Given a float will return if it is actually an integer eg. 16.0 -> 16 """
     if x == int(x):
         return str(int(x))
     else:
@@ -43,6 +45,7 @@ def floatstrip(x):
 
 
 def checkMultiples(Sections, curr_chapter_section, curr_section_title):
+    """ Checks a line for multiple statutes and appends to Sections """
     found_multiples = False
     chapter = curr_chapter_section[0]
     section = curr_chapter_section[1]
@@ -93,27 +96,23 @@ def checkMultiples(Sections, curr_chapter_section, curr_section_title):
 
 
 def append_section(Sections, chapter_section, section_title):
+    """ Appends a section to a parent Section list """
     section = {"chapter": chapter_section[0],
                "section": chapter_section[1],
                "name": section_title}
     Sections.append(section)
-    section_title = ""
-    chapter_section = ""
 
 
-def main():
-    baseURL = 'http://www.capitol.hawaii.gov/hrscurrent/Vol06_Ch0321-0344/HRS0321/HRS_0321-.htm'
+def scrapeSectionNames(url):
+    baseURL = url
     htmlToParse = requests.get(baseURL)
     soup = bs(htmlToParse.text, 'lxml')
 
-    Chapter = {"number": 205, "name": "Land Use Comission", "repealed": False}
     Sections = []
 
     # Prep the data by taking out the chapter title in bold
-    # Make sure to check bolded sections
     bold_titles = soup .find_all('b')
     for bold_title in bold_titles:
-        print(bold_title.get_text())
         rgx_code = re.search(
             '(\d+|\w+)\-((\d+\.\d+\w+)|(\d+\.\d+)|(\d+\w+)|(\d+))',
             bold_title.get_text())
@@ -127,6 +126,7 @@ def main():
 
     curr_section_title = ""
     curr_chapter_section = ""
+
     # Go through each line (<p> tags) and associate the data
     for line in line_data:
         clean_line = cleanText(line)
@@ -162,9 +162,22 @@ def main():
         append_section(Sections, curr_chapter_section,
                        curr_section_title)
     elif "REPEALED" in curr_section_title:
-        Chapter['repealed'] = curr_section_title
+        Sections = None
 
-    Chapter["sections"] = Sections
+    return Sections
+
+
+def main():
+    Chapter = {"number": 205, "name": "Land Use Comission", "repealed": False}
+
+    Sections = scrapeSectionNames(
+        'http://www.capitol.hawaii.gov/hrs2016/Vol06_Ch0321-0344/HRS0321/HRS_0321-.htm')
+
+    if Sections is None:
+        Chapter['repealed'] = True
+    else:
+        Chapter["sections"] = Sections
+
     outfile = open('chapter_example.json', 'w')
     json.dump(Chapter, outfile, sort_keys=True,
               indent=4, separators=(',', ': '))

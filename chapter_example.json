@@ -50,11 +50,6 @@
         },
         {
             "chapter": "321",
-            "name": "Inspections; visits; state-licensed or state-certified care facilities",
-            "section": "1.9"
-        },
-        {
-            "chapter": "321",
             "name": "General office",
             "section": "2"
         },
@@ -182,11 +177,6 @@
             "chapter": "321",
             "name": "Care homes; liability insurance; coverage",
             "section": "11.8"
-        },
-        {
-            "chapter": "321",
-            "name": "Dental health facilities; health care facilities; use of latex gloves",
-            "section": "11.9"
         },
         {
             "chapter": "321",
@@ -432,11 +422,6 @@
             "chapter": "321",
             "name": "Cytomegalovirus public education",
             "section": "34"
-        },
-        {
-            "chapter": "321",
-            "name": "Department of education student physical examination follow-up assistance and consultations",
-            "section": "35"
         },
         {
             "chapter": "321",
@@ -895,11 +880,6 @@
         },
         {
             "chapter": "321",
-            "name": "Emergency medical services; use of latex gloves prohibited",
-            "section": "236"
-        },
-        {
-            "chapter": "321",
             "name": "Repealed",
             "section": "241"
         },
@@ -1100,18 +1080,18 @@
         },
         {
             "chapter": "321",
+            "name": "Access to information",
+            "section": "343"
+        },
+        {
+            "chapter": "321",
             "name": "Exception",
             "section": "344"
         },
         {
             "chapter": "321",
-            "name": "Repealed",
+            "name": "Use of child death review information and records",
             "section": "345"
-        },
-        {
-            "chapter": "321",
-            "name": "Child death reviews; reports",
-            "section": "345.5"
         },
         {
             "chapter": "321",
@@ -1130,11 +1110,6 @@
         },
         {
             "chapter": "321",
-            "name": "Early language services for children who are deaf, hard of hearing, or deaf-blind",
-            "section": "352.2"
-        },
-        {
-            "chapter": "321",
             "name": "Hawaii early intervention coordinating council; establishment",
             "section": "353"
         },
@@ -1150,12 +1125,12 @@
         },
         {
             "chapter": "321",
-            "name": "Repealed",
+            "name": "Early intervention trust fund",
             "section": "356"
         },
         {
             "chapter": "321",
-            "name": "Early intervention fund; purpose and use Program",
+            "name": "Early intervention funds; purpose and use Program",
             "section": "357"
         },
         {
