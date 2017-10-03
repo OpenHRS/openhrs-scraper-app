@@ -44,13 +44,13 @@ def floatstrip(x):
         return str(x)
 
 
-def checkMultiples(Sections, curr_chapter_section, curr_section_title):
+def checkMultiples(Sections, curr_chapter_section, curr_section_name):
     """ Checks a line for multiple statutes and appends to Sections """
     found_multiples = False
     chapter = curr_chapter_section[0]
     section = curr_chapter_section[1]
 
-    multiples = curr_section_title.split(' ')
+    multiples = curr_section_name.split(' ')
 
     # Ex. 16, 20
     if multiples[0] == ',':
@@ -59,8 +59,8 @@ def checkMultiples(Sections, curr_chapter_section, curr_section_title):
             second_section = float(multiples[1])
             second_section = floatstrip(second_section)
 
-            append_section(Sections, [chapter, section], 'Repealed')
-            append_section(Sections, [chapter, second_section], 'Repealed')
+            appendSection(Sections, [chapter, section], 'Repealed')
+            appendSection(Sections, [chapter, second_section], 'Repealed')
 
         except ValueError:
             print("Chapter-section: " + chapter +
@@ -82,7 +82,7 @@ def checkMultiples(Sections, curr_chapter_section, curr_section_title):
 
             if increment != 0:
                 while curr_section <= target_section:
-                    append_section(
+                    appendSection(
                         Sections, [chapter, floatstrip(curr_section)], 'Repealed')
                     curr_section += increment
 
@@ -95,20 +95,19 @@ def checkMultiples(Sections, curr_chapter_section, curr_section_title):
     return found_multiples
 
 
-def append_section(Sections, chapter_section, section_title):
+def appendSection(Sections, chapter_section, section_name):
     """ Appends a section to a parent Section list """
     section = {"chapter": chapter_section[0],
                "section": chapter_section[1],
-               "name": section_title}
+               "name": section_name}
     Sections.append(section)
 
 
-def scrapeSectionNames(url):
+def prepSectionNameData(url):
+    """ Preps the data by getting rid of bolded text """
     baseURL = url
     htmlToParse = requests.get(baseURL)
     soup = bs(htmlToParse.text, 'lxml')
-
-    Sections = []
 
     # Prep the data by taking out the chapter title in bold
     bold_titles = soup .find_all('b')
@@ -122,9 +121,15 @@ def scrapeSectionNames(url):
 
         bold_title.decompose()
 
-    line_data = soup.find_all('p', {'class': 'RegularParagraphs'})
+    return soup.find_all('p', {'class': 'RegularParagraphs'})
 
-    curr_section_title = ""
+
+def scrapeSectionNames(url):
+    Sections = []
+
+    line_data = prepSectionNameData(url)
+
+    curr_section_name = ""
     curr_chapter_section = ""
 
     # Go through each line (<p> tags) and associate the data
@@ -138,30 +143,34 @@ def scrapeSectionNames(url):
 
         if rgx_code is not None:
             # If theres something being tracked already then append it
-            if curr_section_title != "" and curr_chapter_section != "":
-                append_section(Sections, curr_chapter_section,
-                               curr_section_title)
+            if curr_section_name != "" and curr_chapter_section != "":
+                appendSection(Sections, curr_chapter_section,
+                              curr_section_name)
 
-            section_title = clean_line.replace(
-                rgx_code.group(0), '')
-
-            curr_section_title = section_title.strip()
+            # The section name is the currentline - the statute code
+            curr_section_name = clean_line.replace(
+                rgx_code.group(0), '').strip()
             curr_chapter_section = rgx_code.group(0).split('-')
 
+            # Check if there are multiple statutes in a line
             found_multiples = checkMultiples(
-                Sections, curr_chapter_section, curr_section_title)
+                Sections, curr_chapter_section, curr_section_name)
 
             if found_multiples:
-                curr_section_title = ""
+                curr_section_name = ""
                 curr_chapter_section = ""
 
+        # If there isnt a statute in the line then append to previous name
         elif checkText(clean_line):
-            curr_section_title += " " + clean_line
+            curr_section_name += " " + clean_line
 
-    if curr_section_title != "" and curr_chapter_section != "":
-        append_section(Sections, curr_chapter_section,
-                       curr_section_title)
-    elif "REPEALED" in curr_section_title:
+    # Check for anything left in the buffer
+    if curr_section_name != "" and curr_chapter_section != "":
+        appendSection(Sections, curr_chapter_section,
+                      curr_section_name)
+
+    # If nothing was scraped then the whoel chapter was actually repealed
+    elif "REPEALED" in curr_section_name:
         Sections = None
 
     return Sections
