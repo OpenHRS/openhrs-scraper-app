@@ -151,6 +151,11 @@ def scrapeSectionNames(url):
                 rgx_code.group(0), '').strip()
             curr_chapter_section = rgx_code.group(0).split('-')
 
+            # If the section name begins with /\d+:/ delete it
+            secNameBegin1 = re.search('(^\d+: )', curr_section_name)
+            if secNameBegin1 is not None:
+                curr_section_name = curr_section_name.replace(secNameBegin1.group(0), "")
+
             # If the curr_chapter_section ends w/ a capital letter
             # and curr_section_name starts with a lowercase letter
             # and has stuff after it
