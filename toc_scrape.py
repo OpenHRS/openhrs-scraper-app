@@ -137,7 +137,7 @@ def scrapeSectionNames(url):
 
         # Looks for statute code in Regex ex. 123-45.5
         rgx_code = re.search(
-            '(\d+|\w+)\-((\d+\.\d+\w+)|(\d+\.\d+)|(\d+\w+)|(\d+))',
+            '(\d+|\w+)\-((\d+\.\d+\w+)|(\d+\.\d+)|(\d+\w{1})|(\d+))',
             clean_line)
 
         if rgx_code is not None:
@@ -150,6 +150,16 @@ def scrapeSectionNames(url):
             curr_section_name = clean_line.replace(
                 rgx_code.group(0), '').strip()
             curr_chapter_section = rgx_code.group(0).split('-')
+
+            # If the curr_chapter_section ends w/ a capital letter
+            # and curr_section_name starts with a lowercase letter
+            # and has stuff after it
+            chapSecEnd = re.search('[A-Z]$', curr_chapter_section[1])
+            secNameBegin = re.search('^[a-z].{3,}', curr_section_name)
+
+            if chapSecEnd is not None and secNameBegin is not None:
+                curr_section_name = curr_chapter_section[1][-1] + curr_section_name
+                curr_chapter_section[1] = curr_chapter_section[1][:-1]
 
             # Check if there are multiple statutes in a line
             found_multiples = checkMultiples(
