@@ -9,7 +9,8 @@ def cleanText(line):
     clean_text = line.get_text().replace(u'\xa0', "").strip()
     clean_text = clean_text.replace('\r\n', ' ')
     clean_text = clean_text.replace(u'\u2011', '-')
-
+    clean_text = clean_text.replace(u'\u00a7', '')
+    
     return clean_text
 
 
