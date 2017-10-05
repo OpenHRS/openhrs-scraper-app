@@ -64,7 +64,7 @@ def checkMultiples(Sections, curr_chapter_section, curr_section_name):
 
         except ValueError:
             print("Chapter-section: " + chapter +
-                  '-' + section + " may be broken")
+                  '-' + section + " multiple (,) contains a ValueError.")
         found_multiples = True
 
     # Ex. 16.5 to 16.8 REPEALED
@@ -90,7 +90,7 @@ def checkMultiples(Sections, curr_chapter_section, curr_section_name):
 
         except ValueError:
             print("Chapter-section: " + chapter +
-                  '-' + section + " may be broken")
+                  '-' + section + " multiple (to) contains a ValueError.")
 
     return found_multiples
 
@@ -154,7 +154,10 @@ def scrapeSectionNames(url):
             # If the section name begins with /\d+:/ delete it
             secNameBegin1 = re.search('(^\d+: )', curr_section_name)
             if secNameBegin1 is not None:
-                curr_section_name = curr_section_name.replace(secNameBegin1.group(0), "")
+                curr_section_name = curr_section_name.replace(
+                    secNameBegin1.group(0), "")
+                curr_chapter_section[1] = curr_chapter_section[
+                    0] + '-' + curr_chapter_section[1]
 
             # If the curr_chapter_section ends w/ a capital letter
             # and curr_section_name starts with a lowercase letter
@@ -163,7 +166,8 @@ def scrapeSectionNames(url):
             secNameBegin = re.search('^[a-z].{3,}', curr_section_name)
 
             if chapSecEnd is not None and secNameBegin is not None:
-                curr_section_name = curr_chapter_section[1][-1] + curr_section_name
+                curr_section_name = curr_chapter_section[
+                    1][-1] + curr_section_name
                 curr_chapter_section[1] = curr_chapter_section[1][:-1]
 
             # Check if there are multiple statutes in a line
