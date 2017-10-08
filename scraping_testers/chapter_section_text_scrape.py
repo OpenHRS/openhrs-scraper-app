@@ -60,8 +60,9 @@ def checkMultiples(Sections, curr_chapter_section, curr_section_name):
             second_section = float(multiples[1])
             second_section = floatstrip(second_section)
 
-            appendSection(Sections, section, 'Repealed')
-            appendSection(Sections, second_section, 'Repealed')
+            appendSection(Sections, [chapter, section], 'Repealed', None)
+            appendSection(
+                Sections, [chapter, second_section], 'Repealed', None)
 
         except ValueError:
             print("Chapter-section: " + chapter +
@@ -84,7 +85,7 @@ def checkMultiples(Sections, curr_chapter_section, curr_section_name):
             if increment != 0:
                 while curr_section <= target_section:
                     appendSection(
-                        Sections, floatstrip(curr_section), 'Repealed')
+                        Sections, floatstrip(curr_section), 'Repealed', None)
                     curr_section += increment
 
             found_multiples = True
@@ -96,11 +97,43 @@ def checkMultiples(Sections, curr_chapter_section, curr_section_name):
     return found_multiples
 
 
-def appendSection(Sections, section, section_name):
+def appendSection(Sections, chapter_section, section_name, url):
     """ Appends a section to a parent Section list """
-    section = {"number": section,
-               "name": section_name}
-    Sections.append(section)
+    if url is not None:
+        text = getSectionTextData(url, chapter_section[1])
+        if text is not None:
+            section = {"number": chapter_section[1],
+                       "name": section_name,
+                       "text": text}
+            Sections.append(section)
+        else:
+            print("Error parsing text for: " + (chapter_section[0]) + '-' + chapter_section[1])
+    else:
+        section = {"number": chapter_section[1],
+                   "name": section_name,
+                   "text": None}
+        Sections.append(section)
+
+
+def getSectionTextData(url, section):
+    """ Preps the data by getting rid of bolded text """
+    text_data = None
+    section_url = None
+    if '.' in section:
+        split_digit = section.split('.')
+        section_url = str(split_digit[0]).zfill(
+            4) + "_" + str(split_digit[1]).zfill(4) + '.htm'
+    else:
+        section_url = section.zfill(4) + '.htm'
+
+    baseURL = url.replace('.htm', section_url)
+    htmlToParse = requests.get(baseURL)
+    soup = bs(htmlToParse.text, 'lxml')
+
+    if soup is not None:
+        text_data = soup.find(
+            'div', {'class': 'WordSection1'}).get_text().replace('\r\n', ' ')
+    return text_data
 
 
 def prepSectionNameData(url):
@@ -144,8 +177,8 @@ def scrapeSectionNames(url):
         if rgx_code is not None:
             # If theres something being tracked already then append it
             if curr_section_name != "" and curr_chapter_section != "":
-                appendSection(Sections, curr_chapter_section[1],
-                              curr_section_name)
+                appendSection(Sections, curr_chapter_section,
+                              curr_section_name, url)
 
             # The section name is the currentline - the statute code
             curr_section_name = clean_line.replace(
@@ -157,7 +190,8 @@ def scrapeSectionNames(url):
             if secNameBegin1 is not None:
                 curr_section_name = curr_section_name.replace(
                     secNameBegin1.group(0), "")
-                curr_chapter_section[1] = curr_chapter_section[0] + '-' + curr_chapter_section[1]
+                curr_chapter_section[1] = curr_chapter_section[
+                    0] + '-' + curr_chapter_section[1]
 
             # If the curr_chapter_section ends w/ a capital letter
             # and curr_section_name starts with a lowercase letter
@@ -170,7 +204,6 @@ def scrapeSectionNames(url):
                     1][-1] + curr_section_name
                 curr_chapter_section[1] = curr_chapter_section[1][:-1]
                 print(curr_chapter_section)
-
 
             # Check if there are multiple statutes in a line
             found_multiples = checkMultiples(
@@ -186,8 +219,8 @@ def scrapeSectionNames(url):
 
     # Check for anything left in the buffer
     if curr_section_name != "" and curr_chapter_section != "":
-        appendSection(Sections, curr_chapter_section[1],
-                      curr_section_name)
+        appendSection(Sections, curr_chapter_section,
+                      curr_section_name, url)
 
     # If nothing was scraped then the whoel chapter was actually repealed
     elif "REPEALED" in curr_section_name:
@@ -198,19 +231,18 @@ def scrapeSectionNames(url):
 
 def main():
     Chapter = {"number": 205, "name": "Land Use Comission", "repealed": False}
-
-    Sections = scrapeSectionNames(
-        'http://www.capitol.hawaii.gov/hrscurrent/Vol02_Ch0046-0115/HRS0085/HRS_0085-.htm')
+    url = 'http://www.capitol.hawaii.gov/hrscurrent/Vol03_Ch0121-0200D/HRS0184/HRS_0184-.htm'
+    Sections = scrapeSectionNames(url)
 
     if Sections is None:
         Chapter['repealed'] = True
     else:
         Chapter["sections"] = Sections
 
-    outfile = open('output/chapter_example.json', 'w')
+    outfile = open('output/section_text_example.json', 'w')
     json.dump(Chapter, outfile, sort_keys=True,
               indent=4, separators=(',', ': '))
-    print("Data scraped into chapter_example.json")
+    print("Data scraped into section_text_example.json")
 
 
 if __name__ == '__main__':
