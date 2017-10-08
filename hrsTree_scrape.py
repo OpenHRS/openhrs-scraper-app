@@ -195,7 +195,7 @@ def scrapeSectionNames(url):
         # number can be changed if it causes bugs
         # if a section name is more than 10 words, it's probably not a section name
         elif checkText(clean_line):
-            if wordCountSectionName(clean_line) < 10:
+            if wordCountSectionName(clean_line) < 20:
                 curr_section_name += " " + clean_line
                 
 
