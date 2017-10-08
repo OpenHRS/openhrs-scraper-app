@@ -120,9 +120,21 @@ def prepSectionNameData(url):
             continue
 
         bold_title.decompose()
+        """ removes bold tag from text"""
 
     return soup.find_all('p', {'class': 'RegularParagraphs'})
+    #Might have to change this line
 
+def wordCountSectionName(line):
+    # Because some miscellaneous info are also tagged as regular paragraphs, need a wordcount so that they don't 
+    # get added as a section name or appended to an existing one
+    # Ex. HRS 84 number 43 and the tags the PREAMBLE is in
+    # http://www.capitol.hawaii.gov/hrscurrent/Vol02_Ch0046-0115/HRS0084/HRS_0084-.htm
+    words = line.split()
+    count = 0
+    for word in words:
+        count += 1
+    return count
 
 def scrapeSectionNames(url):
     Sections = []
@@ -180,8 +192,12 @@ def scrapeSectionNames(url):
                 curr_chapter_section = ""
 
         # If there isnt a statute in the line then append to previous name
+        # number can be changed if it causes bugs
+        # if a section name is more than 10 words, it's probably not a section name
         elif checkText(clean_line):
-            curr_section_name += " " + clean_line
+            if wordCountSectionName(clean_line) < 10:
+                curr_section_name += " " + clean_line
+                
 
     # Check for anything left in the buffer
     if curr_section_name != "" and curr_chapter_section != "":
