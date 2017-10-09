@@ -207,7 +207,7 @@ def main():
     else:
         Chapter["sections"] = Sections
 
-    outfile = open('chapter_example.json', 'w')
+    outfile = open('output/chapter_example.json', 'w')
     json.dump(Chapter, outfile, sort_keys=True,
               indent=4, separators=(',', ': '))
     print("Data scraped into chapter_example.json")

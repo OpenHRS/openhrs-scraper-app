@@ -6,7 +6,7 @@ from bs4 import BeautifulSoup as bs
 
 def sectionTextData():
     """ Preps the data by getting rid of bolded text """
-    baseURL = 'http://www.capitol.hawaii.gov/hrscurrent/Vol04_Ch0201-0257/HRS0206E/HRS_0206E-0002.htm'
+    baseURL = 'http://www.capitol.hawaii.gov/hrscurrent/Vol02_Ch0046-0115/HRS0103D/HRS_0103D-0104.htm'
     htmlToParse = requests.get(baseURL)
     soup = bs(htmlToParse.text, 'lxml')
 
@@ -22,7 +22,7 @@ def main():
     print(section_text)
     Section['text'] = section_text
 
-    outfile = open('section_example.json', 'w')
+    outfile = open('output/section_example.json', 'w')
     json.dump(Section, outfile, sort_keys=True,
               indent=4, separators=(',', ': '))
     print("Data scraped into section_example.json")
