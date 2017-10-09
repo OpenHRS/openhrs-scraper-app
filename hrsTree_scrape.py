@@ -83,6 +83,7 @@ def checkMultiples(Sections, curr_chapter_section, curr_section_name):
                 #print(section)
                 #print ("There is a comma here")
                 #print(multiples)
+                appendSection(Sections, section, 'Repealed')
                 repealedInCheckMultiples(Sections, multiples)
                 #print("inside if condition")
                 #second_section = float(multiples[1])
@@ -90,7 +91,7 @@ def checkMultiples(Sections, curr_chapter_section, curr_section_name):
 
                 #appendSection(Sections, section, 'Repealed')
                 #appendSection(Sections, second_section, 'Repealed')"""
-                found_multiples = False
+                found_multiples = True
 
         #except ValueError:
             #print("Chapter-section: " + chapter +
@@ -237,7 +238,7 @@ def scrapeSectionNames(url):
                       curr_section_name)
 
     # If nothing was scraped then the whoel chapter was actually repealed
-    elif "REPEALED" in curr_section_name:
+    if "REPEALED" in curr_section_name:
         Sections = None
 
     return Sections
