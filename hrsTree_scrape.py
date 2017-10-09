@@ -235,7 +235,6 @@ def checkLine(currentLine):
 
 def main():
     baseURL = 'http://www.capitol.hawaii.gov/docs/HRS.htm'
-    #baseURL = 'http://www.capitol.hawaii.gov/hrscurrent/Vol01_Ch0001-0042F/HRS0027/HRS_0027-.htm'
     htmlToParse = requests.get(baseURL)
     soup = bs(htmlToParse.text, 'lxml')
 
