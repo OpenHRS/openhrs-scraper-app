@@ -13,6 +13,11 @@ def cleanText(line):
     
     return clean_text
 
+def cleanCommas(line):
+    # Helper function in checkMultiples to remove multiple commas
+    clean_text = line.replace(',', '')
+    return clean_text
+
 
 def checkText(text):
     """ Compares a line to see if there are any blacklisted words"""
@@ -44,6 +49,20 @@ def floatstrip(x):
     else:
         return str(x)
 
+def repealedInCheckMultiples(Sections, multiList):
+    # Ex HRS 27-12-0001 not showing in json file
+    # because REPEALED is in a line with multiple commas and other section names
+    #print("entered function multiples with commas")
+    length = len(multiList) - 1
+    for x in range(1, length):
+        #print(len(multiList))
+        #print(x)
+        new_section = float(multiList[x])
+        new_section = floatstrip(new_section)
+        #print(Sections)
+        #print("Break")
+        #print(new_section)
+        appendSection(Sections, new_section, 'Repealed')
 
 def checkMultiples(Sections, curr_chapter_section, curr_section_name):
     """ Checks a line for multiple statutes and appends to Sections """
@@ -52,21 +71,32 @@ def checkMultiples(Sections, curr_chapter_section, curr_section_name):
     section = curr_chapter_section[1]
 
     multiples = curr_section_name.split(' ')
-
+    #print("Printing the value of list multiples hehe xd")
+    #print(multiples)
     # Ex. 16, 20
+    # Making the assumption that multiple statutes on a line means they are all REPEALED
+    
     if multiples[0] == ',':
-        try:
+        #try:
+                multiples = cleanCommas(curr_section_name).split(' ')
+                #print(chapter)
+                #print(section)
+                #print ("There is a comma here")
+                #print(multiples)
+                appendSection(Sections, section, 'Repealed')
+                repealedInCheckMultiples(Sections, multiples)
+                #print("inside if condition")
+                #second_section = float(multiples[1])
+                #second_section = floatstrip(second_section)
 
-            second_section = float(multiples[1])
-            second_section = floatstrip(second_section)
+                #appendSection(Sections, section, 'Repealed')
+                #appendSection(Sections, second_section, 'Repealed')"""
+                found_multiples = True
 
-            appendSection(Sections, section, 'Repealed')
-            appendSection(Sections, second_section, 'Repealed')
-
-        except ValueError:
-            print("Chapter-section: " + chapter +
-                  '-' + section + " multiple (,) contains a ValueError.")
-        found_multiples = True
+        #except ValueError:
+            #print("Chapter-section: " + chapter +
+             #     '-' + section + " multiple (,) contains a ValueError.")
+        #found_multiples = True
 
     # Ex. 16.5 to 16.8 REPEALED
     elif multiples[0] == 'to':
@@ -120,8 +150,23 @@ def prepSectionNameData(url):
             continue
 
         bold_title.decompose()
+        """ removes bold tag from text"""
 
     return soup.find_all('p', {'class': 'RegularParagraphs'})
+    
+
+def wordCountSectionName(line):
+    # Because some miscellaneous info are also tagged as regular paragraphs, need a wordcount so that they don't 
+    # get added as a section name or appended to an existing one
+    # Ex. HRS 84 number 43 and the tags the PREAMBLE is in
+    # http://www.capitol.hawaii.gov/hrscurrent/Vol02_Ch0046-0115/HRS0084/HRS_0084-.htm
+    words = line.split()
+    count = 0
+    for word in words:
+        count += 1
+    return count
+
+
 
 
 def scrapeSectionNames(url):
@@ -180,8 +225,12 @@ def scrapeSectionNames(url):
                 curr_chapter_section = ""
 
         # If there isnt a statute in the line then append to previous name
+        # number can be changed if it causes bugs
+        # if a section name is more than 10 words, it's probably not a section name
         elif checkText(clean_line):
-            curr_section_name += " " + clean_line
+            if wordCountSectionName(clean_line) < 20:
+                curr_section_name += " " + clean_line
+                
 
     # Check for anything left in the buffer
     if curr_section_name != "" and curr_chapter_section != "":
@@ -189,7 +238,7 @@ def scrapeSectionNames(url):
                       curr_section_name)
 
     # If nothing was scraped then the whoel chapter was actually repealed
-    elif "REPEALED" in curr_section_name:
+    if "REPEALED" in curr_section_name:
         Sections = None
 
     return Sections
@@ -208,6 +257,7 @@ def checkLine(currentLine):
 
 def main():
     baseURL = 'http://www.capitol.hawaii.gov/docs/HRS.htm'
+    #baseURL = 'http://www.capitol.hawaii.gov/hrscurrent/Vol01_Ch0001-0042F/HRS0027/HRS_0027-.htm'
     htmlToParse = requests.get(baseURL)
     soup = bs(htmlToParse.text, 'lxml')
 
