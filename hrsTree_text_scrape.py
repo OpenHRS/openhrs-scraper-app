@@ -51,7 +51,7 @@ def floatstrip(x):
         return str(x)
 
 
-def repealedInCheckMultiples(Sections, multiList):
+def repealedInCheckMultiples(Sections, chapter, multiList):
     # Ex HRS 27-12-0001 not showing in json file
     # because REPEALED is in a line with multiple commas and other section
     # names
@@ -59,7 +59,7 @@ def repealedInCheckMultiples(Sections, multiList):
     for x in range(1, length):
         new_section = float(multiList[x])
         new_section = floatstrip(new_section)
-        appendSection(Sections, new_section, 'Repealed', None)
+        appendSection(Sections, [chapter, new_section], 'Repealed', None)
 
 
 def checkMultiples(Sections, curr_chapter_section, curr_section_name):
@@ -75,8 +75,8 @@ def checkMultiples(Sections, curr_chapter_section, curr_section_name):
 
     if multiples[0] == ',':
         multiples = cleanCommas(curr_section_name).split(' ')
-        appendSection(Sections, section, 'Repealed', None)
-        repealedInCheckMultiples(Sections, multiples)
+        appendSection(Sections, [chapter, section], 'Repealed', None)
+        repealedInCheckMultiples(Sections, chapter, multiples)
         found_multiples = True
 
     # Ex. 16.5 to 16.8 REPEALED
@@ -95,7 +95,7 @@ def checkMultiples(Sections, curr_chapter_section, curr_section_name):
             if increment != 0:
                 while curr_section <= target_section:
                     appendSection(
-                        Sections, floatstrip(curr_section), 'Repealed', None)
+                        Sections, [chapter, floatstrip(curr_section)], 'Repealed', None)
                     curr_section += increment
 
             found_multiples = True
@@ -372,7 +372,7 @@ def main():
     currentDivision["titles"] = Titles
     Divisions.append(currentDivision)
 
-    outfile = open('output/hrsTree.json', 'w')
+    outfile = open('output/hrsTree_text.json', 'w')
     json.dump(Divisions, outfile, sort_keys=True,
               indent=4, separators=(',', ': '))
     print("Data scraped into output/hrsTree.json")
