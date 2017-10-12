@@ -270,13 +270,20 @@ def getSectionTextData(url, section):
     try:
         html_to_parse = requests.get(baseURL)
         soup = bs(html_to_parse.text, 'lxml')
-        text_data = soup.find(
-            'div', {'class': 'WordSection1'})
+        # text_data = soup.find(
+        #     'div', {'class': 'WordSection1'})
+        text_data = soup.find('body')
     except:
         print("Connection possibly timed out on: " + url)
         text_data = None
     if text_data is not None:
-        text_data = text_data.get_text().replace('\r\n', ' ')
+        hrefs = text_data.find_all('a')
+
+        for href in hrefs:
+            href.decompose()
+
+        text_data = text_data.get_text().replace('\r\n', ' ').strip()
+
     return text_data
 
 
