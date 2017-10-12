@@ -370,6 +370,9 @@ def scrapeTableOfContents():
     current_chapter = {}
     chapter_trigger = 0
 
+    division_number = 1
+    title_number = 1
+
     contents = soup.find_all('p', {'class': 'MsoNormal'})
 
     for content in contents:
@@ -381,6 +384,8 @@ def scrapeTableOfContents():
                     Titles.append(current_title)
 
                     current_division["titles"] = Titles
+                    current_division["number"] = division_number
+                    division_number = division_number + 1
                     Divisions.append(current_division)
 
                     current_division = {}
@@ -403,16 +408,22 @@ def scrapeTableOfContents():
                     Chapters = []
 
                     current_title["name"] = currentLine
+                    title_number = re.search('(([0-9]+)([A-Z]))|([0-9]+)', currentLine).group(0)
+                    print(title_number)
+                    current_title["number"] = title_number
                 else:
                     current_title["name"] = currentLine
+                    title_number = re.search('(([0-9]+)([A-Z]))|([0-9]+)', currentLine).group(0)
+                    print(title_number)
+                    current_title["number"] = title_number
             else:
                 if chapter_trigger == 0:
                     current_chapter["number"] = currentLine
-                    current_chapter["text"] = ""
+                    current_chapter["name"] = ""
                     chapter_trigger = 1
 
                 elif chapter_trigger == 1:
-                    current_chapter["text"] = currentLine
+                    current_chapter["name"] = currentLine
                     chapterUrl = content.a['href']
                     Sections = scrapeSectionNames(chapterUrl)
 
@@ -430,6 +441,8 @@ def scrapeTableOfContents():
     Titles.append(current_title)
 
     current_division["titles"] = Titles
+    current_division["number"] = division_number
+    division_number = division_number + 1
     Divisions.append(current_division)
 
     return Divisions
