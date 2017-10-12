@@ -5,11 +5,33 @@ import sys
 from bs4 import BeautifulSoup as bs
 
 no_text = False
+version = None
+VERSIONS = ['hrscurrent',
+            'hrs2016',
+            'hrs2015',
+            'hrs2014',
+            'hrs2013',
+            'hrs2012',
+            'hrs2011',
+            'hrs2010',
+            'hrs2009',
+            'hrs2008',
+            'hrs2007',
+            'hrs2006',
+            'hrs2005',
+            'hrs2004',
+            'hrs2003',
+            'hrs2002']
 
-if len(sys.argv) > 1:
-    if sys.argv[1] == 'notext':
-        print("Scraping with no text")
+if len(sys.argv) > 2:
+    if sys.argv[1] == 'notext' and sys.argv[2] in VERSIONS:
+        version = sys.argv[2]
         no_text = True
+        print('Scraping ' + version + ' with no text')
+
+    elif sys.argv[1] in VERSIONS:
+        version = sys.argv[1]
+        print('Scraping ' + version)
 
 ####################################
 #
@@ -160,7 +182,7 @@ def prepSectionNameData(url):
 
 def scrapeSectionNames(url):
     Sections = []
-
+    url.replace('hrscurrent', version)
     line_data = prepSectionNameData(url)
 
     curr_section_name = ""
@@ -416,9 +438,9 @@ def scrapeTableOfContents():
 def main():
     Divisions = scrapeTableOfContents()
 
-    file_name = 'output/hrsTree_text.json'
+    file_name = 'output/' + version + '.json'
     if no_text:
-        file_name = 'output/hrsTree_notext.json'
+        file_name = 'output/' + version + '_notext.json'
 
     outfile = open(file_name, 'w')
     json.dump(Divisions, outfile, sort_keys=True,
