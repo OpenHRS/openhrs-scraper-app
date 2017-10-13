@@ -23,7 +23,7 @@ VERSIONS = ['hrscurrent',
             'hrs2003',
             'hrs2002']
 
-if len(sys.argv) > 2:
+if len(sys.argv) >= 2:
     if sys.argv[1] == 'notext' and sys.argv[2] in VERSIONS:
         version = sys.argv[2]
         no_text = True
@@ -408,12 +408,14 @@ def scrapeTableOfContents():
                     Chapters = []
 
                     current_title["name"] = currentLine
-                    title_number = re.search('(([0-9]+)([A-Z]))|([0-9]+)', currentLine).group(0)
+                    title_number = re.search(
+                        '(([0-9]+)([A-Z]))|([0-9]+)', currentLine).group(0)
                     print(title_number)
                     current_title["number"] = title_number
                 else:
                     current_title["name"] = currentLine
-                    title_number = re.search('(([0-9]+)([A-Z]))|([0-9]+)', currentLine).group(0)
+                    title_number = re.search(
+                        '(([0-9]+)([A-Z]))|([0-9]+)', currentLine).group(0)
                     print(title_number)
                     current_title["number"] = title_number
             else:

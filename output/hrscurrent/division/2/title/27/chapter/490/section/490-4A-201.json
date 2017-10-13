@@ -1,0 +1,5 @@
+{
+    "name": "Security procedure",
+    "number": "4A-201",
+    "text": "PART 2.\u00a0 ISSUE AND ACCEPTANCE OF PAYMENT ORDER\n\u00a0\n\u00a0\u00a0\u00a0\u00a0 \u00a7490:4A-201\u00a0 Security procedure.\u00a0 \"Security procedure\" means a procedure established by agreement of a customer and a receiving bank for the purpose of (i) verifying that a payment order or communication amending or canceling a payment order is that of the customer, or (ii) detecting error in the transmission or the content of the payment order or communication.\u00a0 A security procedure may require the use of algorithms or other codes, identifying words or numbers, encryption, callback procedures, or similar security devices.\u00a0 Comparison of a signature on a payment order or communication with an authorized specimen signature of the customer is not by itself a security procedure. [L 1991, c 41, pt of \u00a71]"
+}
