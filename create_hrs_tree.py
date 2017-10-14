@@ -114,13 +114,16 @@ def checkMultiples(Sections, curr_chapter_section, curr_section_name):
     elif multiples[0] == 'to':
         try:
             increment = 0
+
             # if the section has a hypen ie 5A-300, it will split and only get
             # the second part
             curr_section_list = section.split('-')
             if len(curr_section_list) == 1:
                 curr_section = float(section)
+                is_article = False
             elif len(curr_section_list) == 2:
                 curr_section = float(curr_section_list[1])
+                is_article = True
             target_section = float(multiples[1])
 
             # Check if the multiple sections will increment by 1 or .1
@@ -131,8 +134,14 @@ def checkMultiples(Sections, curr_chapter_section, curr_section_name):
 
             if increment != 0:
                 while curr_section <= target_section:
-                    appendSection(
-                        Sections, [chapter, floatstrip(curr_section)], 'Repealed', None)
+                    if is_article:
+                        article_section = curr_section_list[
+                            0] + '-' + floatstrip(curr_section)
+                        appendSection(
+                            Sections, [chapter, article_section], 'Repealed', None)
+                    else:
+                        appendSection(Sections, [chapter, floatstrip(
+                            curr_section)], 'Repealed', None)
                     curr_section += increment
 
             found_multiples = True
