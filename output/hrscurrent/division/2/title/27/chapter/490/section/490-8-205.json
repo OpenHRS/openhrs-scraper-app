@@ -1,0 +1,5 @@
+{
+    "name": "Effect of unauthorized signature on security certificate",
+    "number": "8-205",
+    "text": "\u00a7490:8-205\u00a0 Effect of unauthorized signature on security certificate.\u00a0 An unauthorized signature placed on a security certificate before or in the course of issue is ineffective, but the signature is effective in favor of a purchaser for value of the certificated security if the purchaser is without notice of the lack of authority and the signing has been done by:\n\u00a0\u00a0\u00a0\u00a0 (1)\u00a0 An authenticating trustee, registrar, transfer agent, or other person entrusted by the issuer with the signing of the security certificate or of similar security certificates, or the immediate preparation for signing of any of them; or\n\u00a0\u00a0\u00a0\u00a0 (2)\u00a0 An employee of the issuer, or of any of the persons listed in paragraph (1), entrusted with responsible handling of the security certificate. [L 1997, c 33, pt of \u00a72]"
+}
