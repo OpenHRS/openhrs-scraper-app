@@ -21,9 +21,17 @@ python pip install -r requirements.txt
 
 3. To run it:
 ```
-python create_hrs_tree.py
+python create_hrs_tree.py <notext> <hrs[current|year]>
 ```
-It will output an hrsTree.json file with all the Divisions, Titles, Chapters, and Section names + numbers in a tree format.
+Given a year, (`current` for current year, Gregorian calendar year otherwise),
+it will output a file named `hrs[current|year][_notext].json`. When passed the
+`notext` option, it will scrape names statute names only.
+
+Example 1:
+```
+python create_hrs_tree.py notext hrscurrent
+```
+It will output a file named `hrscurrent.json` with all the current Divisions, Titles, Chapters, and Section names + numbers in a tree format.
 
 
 ## Plans
