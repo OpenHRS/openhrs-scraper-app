@@ -33,6 +33,8 @@ python create_hrs_tree.py notext hrscurrent
 ```
 It will output a file named `hrscurrent.json` with all the current Divisions, Titles, Chapters, and Section names + numbers in a tree format.
 
+*Note: does not work for years 2005 and earlier*
+
 
 ## Plans
 1. Add support for:
