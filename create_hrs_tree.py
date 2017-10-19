@@ -2,6 +2,7 @@ import json
 import requests
 import re
 import sys
+import math
 from bs4 import BeautifulSoup as bs
 
 no_text = False
@@ -23,7 +24,7 @@ VERSIONS = ['hrscurrent',
             'hrs2003',
             'hrs2002']
 
-if len(sys.argv) > 2:
+if len(sys.argv) > 1:
     if sys.argv[1] == 'notext' and sys.argv[2] in VERSIONS:
         version = sys.argv[2]
         no_text = True
@@ -31,7 +32,11 @@ if len(sys.argv) > 2:
 
     elif sys.argv[1] in VERSIONS:
         version = sys.argv[1]
-        print('Scraping ' + version)
+        if len(sys.argv) > 2 and sys.argv[2] == 'notext':
+            no_text = True
+            print('Scraping ' + version + ' with no text')
+        else:
+            print('Scraping ' + version)
 
 ####################################
 #
@@ -44,8 +49,12 @@ def cleanText(line):
     """ Function that cleans up all known defects that may be in the html """
     clean_text = line.get_text().replace(u'\xa0', "").strip()
     clean_text = clean_text.replace('\r\n', ' ')
+    clean_text = clean_text.replace('\n', ' ')
     clean_text = clean_text.replace(u'\u2011', '-')
-    clean_text = clean_text.replace(u'\u00a7', '')
+    while clean_text.find('§') >= 0:
+        clean_text = clean_text.replace('§', '')
+    while clean_text.find(u'\u00a0') >= 0:
+        clean_text = clean_text.replace(u'\u00a0', '')
 
     return clean_text
 
@@ -127,9 +136,9 @@ def checkMultiples(Sections, curr_chapter_section, curr_section_name):
             target_section = float(multiples[1])
 
             # Check if the multiple sections will increment by 1 or .1
-            if target_section % 1 == 0:
+            if target_section - math.floor(target_section) == 0:
                 increment = 1
-            elif target_section % .1 == 0:
+            elif target_section - math.floor(target_section) > 0:
                 increment = .1
 
             if increment != 0:
@@ -159,9 +168,10 @@ def repealedInCheckMultiples(Sections, chapter, multiList):
     # names
     length = len(multiList) - 1
     for x in range(1, length):
-        new_section = float(multiList[x])
-        new_section = floatstrip(new_section)
-        appendSection(Sections, [chapter, new_section], 'Repealed', None)
+        if re.search('[0-9\.]+', multiList[x]) is not None:
+            new_section = float(multiList[x])
+            new_section = floatstrip(new_section)
+            appendSection(Sections, [chapter, new_section], 'Repealed', None)
 
 ####################################
 #
@@ -181,23 +191,41 @@ def prepSectionNameData(url):
         soup = bs(html_to_parse.text, 'lxml')
 
     # Prep the data by taking out the chapter title in bold
-    bold_titles = soup .find_all('b')
+    bold_titles = soup.find_all('b')
+    leftover_text = ""
+    get_stuff = False
     for bold_title in bold_titles:
-        rgx_code = re.search(
-            '(\d+|\w+)\-((\d+\.\d+\w+)|(\d+\.\d+)|(\d+\w+)|(\d+))',
-            bold_title.get_text())
+        if bold_title.get_text():
+            if get_stuff is False:
+                leftover_text = ""
 
-        if "REPEALED" in bold_title.get_text() or rgx_code is not None:
-            continue
+            rgx_code = re.search(
+                '(\d+|\w+)\-((\d+\.\d+\w+)|(\d+\.\d+)|(\d+\w+)|(\d+))',
+                bold_title.get_text())
 
-        bold_title.decompose()
+            if version in VERSIONS[-4:]:
+                if rgx_code is None and get_stuff is False:
+                    rgx_code = re.search('[\w ]*\d+\w*\.?', bold_title.get_text())
+                    if rgx_code is not None:
+                        leftover_text = bold_title
 
-    return soup.find_all('p', {'class': 'RegularParagraphs'})
+                if rgx_code is None and get_stuff is True:
+                    rgx_code = re.search('.*$', bold_title.get_text())
+                    if rgx_code is not None:
+                        leftover_text.append(rgx_code.match)
+                        bold_title = leftover_text
+                        get_stuff = False
 
+            if "REPEALED" in bold_title.get_text() or rgx_code is not None:
+                continue
+
+            bold_title.decompose()
+
+    return soup.find_all('p') if version in VERSIONS[-4:] else soup.find_all('p', {'class': 'RegularParagraphs'})
 
 def scrapeSectionNames(url):
     Sections = []
-    url.replace('hrscurrent', version)
+    url = url.replace('hrscurrent', version)
     line_data = prepSectionNameData(url)
 
     curr_section_name = ""
@@ -205,7 +233,7 @@ def scrapeSectionNames(url):
 
     # Go through each line (<p> tags) and associate the data
     for line in line_data:
-        clean_line = cleanText(line)
+        clean_line = cleanText(line).strip()
 
         # Looks for statute code in Regex ex. 123-45.5
         rgx_code = re.search(
@@ -217,6 +245,15 @@ def scrapeSectionNames(url):
             if curr_section_name != "" and curr_chapter_section != "":
                 appendSection(Sections, curr_chapter_section,
                               curr_section_name, url)
+
+            # If space does not separate chapter-section and section name
+            # do something about it
+            extra_text = re.search(
+                '(\d+[A-Z]?-\d+(\.\d)?[A-Z]?)([A-Z]{1}[a-z]+$)',
+                clean_line)
+            if extra_text is not None:
+                clean_line = clean_line.replace(
+                    extra_text.group(1), extra_text.group(1) + ' ')
 
             # The section name is the currentline - the statute code
             curr_section_name = clean_line.replace(
@@ -240,7 +277,12 @@ def scrapeSectionNames(url):
             if chapSecEnd is not None and secNameBegin is not None:
                 curr_section_name = curr_chapter_section[
                     1][-1] + curr_section_name
-                curr_chapter_section[1] = curr_chapter_section[1][:-1]
+                endPunc = re.search('([;, ]*)$', curr_chapter_section[1])
+                if endPunc is not None:
+                    curr_chapter_section[1] = curr_chapter_section[1].replace(
+                        endPunc.group(0), "")
+                else:
+                    curr_chapter_section[1] = curr_chapter_section[1][:-1]
 
             # Check if there are multiple statutes in a line
             found_multiples = checkMultiples(
@@ -327,25 +369,43 @@ def getSectionTextData(url, section):
 def appendSection(Sections, chapter_section, section_name, url):
     """ Appends a section to a parent Section list """
     if url is not None and not no_text:
+
+        excess_text = re.search(
+            "(\d+(\.\d)?[A-Z]?)([A-Z]{1}[a-z]+$)", chapter_section[1])
+
+        if excess_text is not None:
+            chapter_section[1] = chapter_section[1].replace(excess_text.group(3), '')
+
         text = getSectionTextData(url, chapter_section[1])
         section = {"number": chapter_section[1],
                    "name": section_name}
         if text is not None:
-            section['text'] = text
+            if "Page Not Found" in text:
+                print("Error 404 for: " +
+                      (chapter_section[0]) + '-' + chapter_section[1])
+            else:
+                if ('§' + chapter_section[0] + '-' + chapter_section[1]) in text and section_name in text:
+                    text = text.replace(section_name + '.', '')
+                    text = text.replace('§' + chapter_section[0] + '-' + chapter_section[1], '')
+                    brackets = re.search('^\[\]', text)
+                    if brackets is not None:
+                        text = text.replace(brackets.group(0), '')
+                    text = text.strip()
+
+                section['text'] = text
+                Sections.append(section)
 
         else:
             print("Error parsing text for: " +
                   (chapter_section[0]) + '-' + chapter_section[1])
 
-        Sections.append(section)
     else:
         section = {"number": chapter_section[1],
                    "name": section_name}
 
         if not no_text:
             section['text'] = None
-
-        Sections.append(section)
+            Sections.append(section)
 
 
 def checkLine(currentLine):
