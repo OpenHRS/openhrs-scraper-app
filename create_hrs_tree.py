@@ -49,12 +49,7 @@ def cleanText(line):
     """ Function that cleans up all known defects that may be in the html """
     clean_text = line.get_text().replace(u'\xa0', "").strip()
     clean_text = clean_text.replace('\r\n', ' ')
-    clean_text = clean_text.replace('\n', ' ')
     clean_text = clean_text.replace(u'\u2011', '-')
-    while clean_text.find('§') >= 0:
-        clean_text = clean_text.replace('§', '')
-    while clean_text.find(u'\u00a0') >= 0:
-        clean_text = clean_text.replace(u'\u00a0', '')
 
     return clean_text
 
@@ -384,14 +379,30 @@ def appendSection(Sections, chapter_section, section_name, url):
                 print("Error 404 for: " +
                       (chapter_section[0]) + '-' + chapter_section[1])
             else:
-                if ('§' + chapter_section[0] + '-' + chapter_section[1]) in text and section_name in text:
-                    text = text.replace(section_name + '.', '')
+                if ('§' + chapter_section[0] + u'\u2011' + chapter_section[1]) in text and section_name in text:
+                    text = text.replace(section_name + '.' if section_name[-1] != '.' else section_name, '')
+                    text = text.replace('§' + chapter_section[0] + u'\u2011' + chapter_section[1], '')
+                elif ('§' + chapter_section[0] + '-' + chapter_section[1]) in text and section_name in text:
+                    text = text.replace(section_name + '.' if section_name[-1] != '.' else section_name, '')
                     text = text.replace('§' + chapter_section[0] + '-' + chapter_section[1], '')
-                    brackets = re.search('^\[\]', text)
-                    if brackets is not None:
-                        text = text.replace(brackets.group(0), '')
-                    text = text.strip()
+                else:
+                    if section_name in text:
+                        text = text.replace(section_name + '.' if section_name[-1] != '.' else section_name, '')
 
+                    if ('§' + chapter_section[0] + u'\u2011' + chapter_section[1]) in text:
+                        text = text.replace('§' + chapter_section[0] + u'\u2011' + chapter_section[1], '')
+                    elif ('§' + chapter_section[0] + '-' + chapter_section[1]) in text:
+                        text = text.replace('§' + chapter_section[0] + '-' + chapter_section[1], '')
+                    elif (chapter_section[0] + u'\u2011' + chapter_section[1]) in text:
+                        text = text.replace(chapter_section[0] + u'\u2011' + chapter_section[1], '')
+                    elif (chapter_section[0] + '-' + chapter_section[1]) in text:
+                        text = text.replace(chapter_section[0] + '-' + chapter_section[1], '')
+
+                brackets = re.search('^\[\]', text)
+                if brackets is not None:
+                    text = text.replace(brackets.group(0), '')
+
+                text = text.strip()
                 section['text'] = text
                 Sections.append(section)
 
