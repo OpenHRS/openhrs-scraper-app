@@ -401,6 +401,10 @@ def appendSection(Sections, chapter_section, section_name, url):
                 brackets = re.search('^\[\]', text)
                 if brackets is not None:
                     text = text.replace(brackets.group(0), '')
+                elif '[' in text and text.find('[') == 0 and ']' in text:
+                    text = text[(text.find(']') + 1):]
+                elif '[' in text and text.find('[') == 0 and u'\u00a0' in text:
+                    text = text[(text.find(u'\u00a0') + 1):]
 
                 text = text.strip()
                 section['text'] = text
