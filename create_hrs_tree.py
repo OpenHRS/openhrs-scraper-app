@@ -365,9 +365,11 @@ def appendSection(Sections, chapter_section, section_name, url):
     """ Appends a section to a parent Section list """
     if url is not None and not no_text:
 
+        # Check for excess text in section number string...
         excess_text = re.search(
             "(\d+(\.\d)?[A-Z]?)([A-Z]{1}[a-z]+$)", chapter_section[1])
 
+        # ... and delete excess text if it exists
         if excess_text is not None:
             chapter_section[1] = chapter_section[1].replace(excess_text.group(3), '')
 
@@ -379,6 +381,7 @@ def appendSection(Sections, chapter_section, section_name, url):
                 print("Error 404 for: " +
                       (chapter_section[0]) + '-' + chapter_section[1])
             else:
+                # The code explains everything.
                 if ('§' + chapter_section[0] + u'\u2011' + chapter_section[1]) in text and section_name in text:
                     text = text.replace(section_name + '.' if section_name[-1] != '.' else section_name, '')
                     text = text.replace('§' + chapter_section[0] + u'\u2011' + chapter_section[1], '')
@@ -398,6 +401,7 @@ def appendSection(Sections, chapter_section, section_name, url):
                     elif (chapter_section[0] + '-' + chapter_section[1]) in text:
                         text = text.replace(chapter_section[0] + '-' + chapter_section[1], '')
 
+                # Check for brackets
                 brackets = re.search('^\[\]', text)
                 if brackets is not None:
                     text = text.replace(brackets.group(0), '')
@@ -407,6 +411,16 @@ def appendSection(Sections, chapter_section, section_name, url):
                     text = text[(text.find(u'\u00a0') + 1):]
 
                 text = text.strip()
+
+                # Check for brackets again
+                brackets = re.search('^\[\]', text)
+                if brackets is not None:
+                    text = text.replace(brackets.group(0), '')
+                elif '[' in text and text.find('[') == 0 and ']' in text:
+                    text = text[(text.find(']') + 1):]
+                elif '[' in text and text.find('[') == 0 and u'\u00a0' in text:
+                    text = text[(text.find(u'\u00a0') + 1):]
+
                 section['text'] = text
                 Sections.append(section)
 
