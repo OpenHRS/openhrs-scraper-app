@@ -515,13 +515,11 @@ def scrapeTableOfContents():
                     current_title["name"] = currentLine
                     title_number = re.search(
                         '(([0-9]+)([A-Z]))|([0-9]+)', currentLine).group(0)
-                    print(title_number)
                     current_title["number"] = title_number
                 else:
                     current_title["name"] = currentLine
                     title_number = re.search(
                         '(([0-9]+)([A-Z]))|([0-9]+)', currentLine).group(0)
-                    print(title_number)
                     current_title["number"] = title_number
             else:
                 if chapter_trigger == 0:
