@@ -3,6 +3,16 @@ import requests
 import re
 from bs4 import BeautifulSoup as bs
 
+def wordCountSectionName(line):
+    # Because some miscellaneous info are also tagged as regular paragraphs, need a wordcount so that they don't
+    # get added as a section name or appended to an existing one
+    # Ex. HRS 84 number 43 and the tags the PREAMBLE is in
+    # http://www.capitol.hawaii.gov/hrscurrent/Vol02_Ch0046-0115/HRS0084/HRS_0084-.htm
+    words = line.split()
+    count = 0
+    for word in words:
+        count += 1
+    return count
 
 def cleanText(line):
     """ Function that cleans up all known defects that may be in the html """
@@ -87,6 +97,9 @@ def checkMultiples(Sections, curr_chapter_section, curr_section_name):
                     appendSection(
                         Sections, floatstrip(curr_section), 'Repealed', None)
                     curr_section += increment
+                    if increment == .1:
+                        while re.search('\.[1-9]{2,}$', str(curr_section)) is not None:
+                            curr_section = round(curr_section, 1)
 
             found_multiples = True
 
@@ -176,7 +189,7 @@ def prepSectionNameData(url):
     bold_titles = soup .find_all('b')
     for bold_title in bold_titles:
         rgx_code = re.search(
-            '(\d+|\w+)\-((\d+\.\d+\w+)|(\d+\.\d+)|(\d+\w+)|(\d+))',
+            '([\d\w]+)\-((\d+\.\d+\w+)|(\d+\.\d+)|(\d+\w{1})|(\d+))',
             bold_title.get_text())
 
         if "REPEALED" in bold_title.get_text() or rgx_code is not None:
@@ -201,7 +214,7 @@ def scrapeSectionNames(url):
 
         # Looks for statute code in Regex ex. 123-45.5
         rgx_code = re.search(
-            '(\d+|\w+)\-((\d+\.\d+\w+)|(\d+\.\d+)|(\d+\w{1})|(\d+))',
+            '([\d\w]+)\-((\d+\.\d+\w+)|(\d+\.\d+)|(\d+\w{1})|(\d+))',
             clean_line)
 
         if rgx_code is not None:
@@ -209,6 +222,13 @@ def scrapeSectionNames(url):
             if curr_section_name != "" and curr_chapter_section != "":
                 appendSection(Sections, curr_chapter_section,
                               curr_section_name, url)
+
+            extra_text = re.search(
+                '(\d+[A-Z]?-\d+(\.\d)?[A-Z]?)([A-Z]{1}[a-z]+$)',
+                clean_line)
+            if extra_text is not None:
+                clean_line = clean_line.replace(
+                    extra_text.group(1), extra_text.group(1) + ' ')
 
             # The section name is the currentline - the statute code
             curr_section_name = clean_line.replace(
@@ -227,13 +247,17 @@ def scrapeSectionNames(url):
             # and curr_section_name starts with a lowercase letter
             # and has stuff after it
             chapSecEnd = re.search('[A-Z]$', curr_chapter_section[1])
-            secNameBegin = re.search('^[a-z].{3,}', curr_section_name)
+            secNameBegin = re.search('^[A-Z]?[A-Za-z]{3,}', curr_section_name)
 
             if chapSecEnd is not None and secNameBegin is not None:
                 curr_section_name = curr_chapter_section[
                     1][-1] + curr_section_name
                 curr_chapter_section[1] = curr_chapter_section[1][:-1]
-                print(curr_chapter_section)
+
+            extra_letter = re.search('[A-Z]', curr_chapter_section[1])
+
+            if extra_letter is not None:
+                curr_chapter_section[1] = curr_chapter_section[1][:-1]
 
             # Check if there are multiple statutes in a line
             found_multiples = checkMultiples(
@@ -245,7 +269,8 @@ def scrapeSectionNames(url):
 
         # If there isnt a statute in the line then append to previous name
         elif checkText(clean_line):
-            curr_section_name += " " + clean_line
+            if wordCountSectionName(clean_line) < 20:
+                curr_section_name += " " + clean_line
 
     # Check for anything left in the buffer
     if curr_section_name != "" and curr_chapter_section != "":
@@ -260,8 +285,8 @@ def scrapeSectionNames(url):
 
 
 def main():
-    Chapter = {"number": 205, "name": "Land Use Comission", "repealed": False}
-    url = 'http://www.capitol.hawaii.gov/hrscurrent/Vol11_Ch0476-0490/HRS0490/HRS_0490-.htm'
+    Chapter = {"number": 205, "name": "UNIFORM CHILD-CUSTODY JURISDICTION AND ENFORCEMENT ACT", "repealed": False}
+    url = 'http://www.capitol.hawaii.gov/hrscurrent/Vol12_Ch0501-0588/HRS0583A/HRS_0583A-.htm'
     Sections = scrapeSectionNames(url)
 
     if Sections is None:

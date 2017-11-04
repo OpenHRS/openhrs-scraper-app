@@ -86,6 +86,9 @@ def checkMultiples(Sections, curr_chapter_section, curr_section_name):
                     appendSection(
                         Sections, floatstrip(curr_section), 'Repealed')
                     curr_section += increment
+                    if increment == .1:
+                        while re.search('\.[1-9]{2,}$', str(curr_section)) is not None:
+                            curr_section = round(curr_section, 1)
 
             found_multiples = True
 
@@ -113,7 +116,7 @@ def prepSectionNameData(url):
     bold_titles = soup .find_all('b')
     for bold_title in bold_titles:
         rgx_code = re.search(
-            '(\d+|\w+)\-((\d+\.\d+\w+)|(\d+\.\d+)|(\d+\w+)|(\d+))',
+            '([\d\w]+)\-((\d+\.\d+\w+)|(\d+\.\d+)|(\d+\w{1})|(\d+))',
             bold_title.get_text())
 
         if "REPEALED" in bold_title.get_text() or rgx_code is not None:
@@ -138,7 +141,7 @@ def scrapeSectionNames(url):
 
         # Looks for statute code in Regex ex. 123-45.5
         rgx_code = re.search(
-            '(\d+|\w+)\-((\d+\.\d+\w+)|(\d+\.\d+)|(\d+\w{1})|(\d+))',
+            '([\d\w]+)\-((\d+\.\d+\w+)|(\d+\.\d+)|(\d+\w{1})|(\d+))',
             clean_line)
 
         if rgx_code is not None:
@@ -163,7 +166,7 @@ def scrapeSectionNames(url):
             # and curr_section_name starts with a lowercase letter
             # and has stuff after it
             chapSecEnd = re.search('[A-Z]$', curr_chapter_section[1])
-            secNameBegin = re.search('^[a-z].{3,}', curr_section_name)
+            secNameBegin = re.search('^[a-z]{3,}', curr_section_name)
 
             if chapSecEnd is not None and secNameBegin is not None:
                 curr_section_name = curr_chapter_section[

@@ -148,6 +148,10 @@ def checkMultiples(Sections, curr_chapter_section, curr_section_name):
                         appendSection(Sections, [chapter, floatstrip(
                             curr_section)], 'Repealed', None)
                     curr_section += increment
+                    if increment == .1:
+                        if re.search('\.[1-9]{2,}$', str(curr_section)) is not None:
+                            curr_section = round(curr_section, 1)
+
 
             found_multiples = True
 
@@ -196,7 +200,7 @@ def prepSectionNameData(url):
                 leftover_text = ""
 
             rgx_code = re.search(
-                '(\d+|\w+)\-((\d+\.\d+\w+)|(\d+\.\d+)|(\d+\w+)|(\d+))',
+                '([\d\w]+)\-((\d+\.\d+\w+)|(\d+\.\d+)|(\d+\w{1})|(\d+))',
                 bold_title.get_text())
 
             if version in VERSIONS[-4:]:
@@ -233,7 +237,7 @@ def scrapeSectionNames(url):
 
         # Looks for statute code in Regex ex. 123-45.5
         rgx_code = re.search(
-            '(\d+|\w+)\-((\d+\.\d+\w+)|(\d+\.\d+)|(\d+\w{1})|(\d+))',
+            '([\d\w]+)\-((\d+\.\d+\w+)|(\d+\.\d+)|(\d+\w{1})|(\d+))',
             clean_line)
 
         if rgx_code is not None:
@@ -268,7 +272,7 @@ def scrapeSectionNames(url):
             # and curr_section_name starts with a lowercase letter
             # and has stuff after it
             chapSecEnd = re.search('[A-Z]$', curr_chapter_section[1])
-            secNameBegin = re.search('^[a-z].{3,}', curr_section_name)
+            secNameBegin = re.search('^[a-z]{3,}', curr_section_name)
 
             if chapSecEnd is not None and secNameBegin is not None:
                 curr_section_name = curr_chapter_section[
@@ -279,6 +283,11 @@ def scrapeSectionNames(url):
                         endPunc.group(0), "")
                 else:
                     curr_chapter_section[1] = curr_chapter_section[1][:-1]
+
+            extra_letter = re.search('[A-Z]', curr_chapter_section[1])
+
+            if extra_letter is not None:
+                curr_chapter_section[1] = curr_chapter_section[1][:-1]
 
             # Check if there are multiple statutes in a line
             found_multiples = checkMultiples(
