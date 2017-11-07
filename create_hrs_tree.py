@@ -237,7 +237,7 @@ def scrapeSectionNames(url):
 
         # Looks for statute code in Regex ex. 123-45.5
         rgx_code = re.search(
-            '([\d\w]+)\-((\d+\.\d+\w+)|(\d+\.\d+)|(\d+\w{1})|(\d+))',
+            '([\d\w]+)\-((\d+\.\d+\w+)|(\d+\.\d+)|(\d+\w{1})|(\d+))|(\d+\:\d+\w?-\d+\w?)',
             clean_line)
 
         if rgx_code is not None:
@@ -265,8 +265,13 @@ def scrapeSectionNames(url):
             if secNameBegin1 is not None:
                 curr_section_name = curr_section_name.replace(
                     secNameBegin1.group(0), "")
-                curr_chapter_section[1] = curr_chapter_section[
-                    0] + '-' + curr_chapter_section[1]
+
+            # If chapter-section has a colon
+            secNumBegin1 = re.search('(^\d+\:)', curr_chapter_section[0])
+            if secNumBegin1 is not None:
+                frags = curr_chapter_section[0].split(':')
+                curr_chapter_section[0] = frags[0]
+                curr_chapter_section[1] = frags[1] + '-' + curr_chapter_section[1]
 
             # If the curr_chapter_section ends w/ a capital letter
             # and curr_section_name starts with a lowercase letter
@@ -284,7 +289,7 @@ def scrapeSectionNames(url):
                 else:
                     curr_chapter_section[1] = curr_chapter_section[1][:-1]
 
-            extra_letter = re.search('[A-Z]', curr_chapter_section[1])
+            extra_letter = re.search('[A-Z]$', curr_chapter_section[1])
 
             if extra_letter is not None:
                 curr_chapter_section[1] = curr_chapter_section[1][:-1]
