@@ -356,15 +356,26 @@ def getSectionTextData(url, section):
             section_url = section.zfill(4) + '.htm'
 
     baseURL = url.replace('.htm', section_url)
-    try:
-        html_to_parse = requests.get(baseURL)
-        soup = bs(html_to_parse.text, 'lxml')
-        # text_data = soup.find(
-        #     'div', {'class': 'WordSection1'})
-        text_data = soup.find('body')
-    except:
-        print("Connection possibly timed out on: " + url)
-        text_data = None
+
+    text_data = None
+    good = True
+
+    while text_data is None:
+        try:
+            html_to_parse = requests.get(baseURL)
+            soup = bs(html_to_parse.text, 'lxml')
+
+            # text_data = soup.find(
+            #     'div', {'class': 'WordSection1'})
+            if good is False:
+                print("Reconnection to " + baseURL + " SUCCESSFUL...")
+                good = True
+            text_data = soup.find('body')
+        except:
+            print("Connection timeout on: " + baseURL + " RECONNECTING...")
+            good = False
+            text_data = None
+
     if text_data is not None:
         hrefs = text_data.find_all('a')
 
