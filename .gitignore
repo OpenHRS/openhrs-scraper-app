@@ -1,4 +1,2 @@
 /env/
-output/**/
-!output/*.txt
-!output/*.json
+output/**/division/**/*.json
