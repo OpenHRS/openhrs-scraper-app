@@ -1,3 +1,2 @@
 /env/
-/output/**/
-!/output/hrs*.json
+/output/
