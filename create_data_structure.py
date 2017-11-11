@@ -1,3 +1,4 @@
+import sys
 import json
 import requests
 import re
@@ -5,9 +6,33 @@ import os
 import json
 from bs4 import BeautifulSoup as bs
 
+VERSIONS = ['hrscurrent',
+            'hrs2016',
+            'hrs2015',
+            'hrs2014',
+            'hrs2013',
+            'hrs2012',
+            'hrs2011',
+            'hrs2010',
+            'hrs2009',
+            'hrs2008',
+            'hrs2007',
+            'hrs2006',
+            'hrs2005',
+            'hrs2004',
+            'hrs2003',
+            'hrs2002']
+
+filename = ''
+
+if len(sys.argv) > 1 and sys.argv[1] in VERSIONS:
+    filename = sys.argv[1]
+else:
+    print("BAD PARAMETER")
+    exit(1)
 
 def main():
-    with open('output/hrscurrent.json') as hrs_tree:
+    with open('output/' + filename + '.json') as hrs_tree:
         hrs_data = json.load(hrs_tree)
 
     for division in hrs_data:
@@ -24,10 +49,11 @@ def main():
                     for section in sections:
                         create_path(division, title, chapter, section)
 
-    print('Data structure created using hrscurrent.json')
+    print('Data structure created using ' + filename + '.json')
 
 
 def create_path(division, title, chapter, section):
+    global filename
     division_json = {'name': division['name'],
                      'number': division['number']}
 
@@ -38,7 +64,7 @@ def create_path(division, title, chapter, section):
                     'number': chapter['number'],
                     'repealed': chapter['repealed']}
 
-    path = 'output/hrscurrent/division/{}/title/{}/chapter/{}/section/'.format(
+    path = 'output/' + filename + '/division/{}/title/{}/chapter/{}/section/'.format(
         division['number'], title['number'], chapter['number'])
 
     if not os.path.exists(path):

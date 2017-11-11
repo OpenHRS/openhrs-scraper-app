@@ -51,6 +51,8 @@ def cleanText(line):
     clean_text = line.get_text().replace(u'\xa0', "").strip()
     clean_text = clean_text.replace('\r\n', ' ')
     clean_text = clean_text.replace(u'\u2011', '-')
+    clean_text = clean_text.replace(u'\u00a7', '')
+    clean_text = clean_text.strip(' \t\n\r')
 
     return clean_text
 
@@ -72,14 +74,14 @@ def checkText(line):
     if rgx_check is not None:
         is_okay = False
 
-    for word in blacklist:
-        if word in line:
-            is_okay = False
-        elif line == "":
-            is_okay = False
-
-    if "REPEALED" in line:
-        is_okay = True
+    if line == "":
+        is_okay = False
+    else:
+        for word in blacklist:
+            if word in line:
+                is_okay = False
+        if "REPEALED" in line:
+            is_okay = True
 
     return is_okay
 
@@ -200,32 +202,41 @@ def prepSectionNameData(url):
                 leftover_text = ""
 
             rgx_code = re.search(
-                '([\d\w]+)\-((\d+\.\d+\w+)|(\d+\.\d+)|(\d+\w{1})|(\d+))',
+                '([\d\w]+)\-((\d+\.\d+\w+)|(\d+\.\d+)|(\d+\w{1})|(\d+))|(\d+\:\d+\w?-\d+\w?)',
                 bold_title.get_text())
-
-            if version in VERSIONS[-4:]:
-                if rgx_code is None and get_stuff is False:
-                    rgx_code = re.search('[\w ]*\d+\w*\.?', bold_title.get_text())
-                    if rgx_code is not None:
-                        leftover_text = bold_title
-
-                if rgx_code is None and get_stuff is True:
-                    rgx_code = re.search('.*$', bold_title.get_text())
-                    if rgx_code is not None:
-                        leftover_text.append(rgx_code.match)
-                        bold_title = leftover_text
-                        get_stuff = False
 
             if "REPEALED" in bold_title.get_text() or rgx_code is not None:
                 continue
 
             bold_title.decompose()
 
-    return soup.find_all('p') if version in VERSIONS[-4:] else soup.find_all('p', {'class': 'RegularParagraphs'})
+    if version in VERSIONS[-4:]:
+        return soup.find_all('p')
+    else:
+        return soup.find_all('p', {'class': 'RegularParagraphs'})
 
 def scrapeSectionNames(url):
     Sections = []
     url = url.replace('hrscurrent', version)
+
+    # Validate URL. If 404, get similar URL.
+    if requests.get(re.search('.*Ch\d{4}\w?\-\d{4}\w?/', url).group(0)).status_code == 404:
+        toc = requests.get('http://www.capitol.hawaii.gov/' + version)
+        soup = bs(toc.text, 'lxml')
+        links = soup.find_all('a')
+        url_should_be_ok = False
+        for link in links:
+            if url_should_be_ok == False:
+                href = link['href']
+                if href != '/':
+                    split_href = href.split("/")
+                    split_url = url.split("/")
+                    href_extr = split_href[2]
+                    url_extr = split_url[4]
+                    if href_extr.split("_")[0] == url_extr.split("_")[0]:
+                        url = url.replace(url_extr, href_extr)
+                        url_should_be_ok = True
+
     line_data = prepSectionNameData(url)
 
     curr_section_name = ""
@@ -260,8 +271,8 @@ def scrapeSectionNames(url):
                 rgx_code.group(0), '').strip()
             curr_chapter_section = rgx_code.group(0).split('-')
 
-            # If the section name begins with /\d+:/ delete it
-            secNameBegin1 = re.search('(^\d+: )', curr_section_name)
+            # If the section name begins with /\d+ / delete it
+            secNameBegin1 = re.search('(^\d+ )', curr_section_name)
             if secNameBegin1 is not None:
                 curr_section_name = curr_section_name.replace(
                     secNameBegin1.group(0), "")
@@ -377,11 +388,6 @@ def getSectionTextData(url, section):
             text_data = None
 
     if text_data is not None:
-        hrefs = text_data.find_all('a')
-
-        for href in hrefs:
-            href.decompose()
-
         text_data = text_data.get_text().replace('\r\n', ' ').strip()
 
     return text_data
@@ -556,7 +562,6 @@ def scrapeTableOfContents():
                     current_chapter["name"] = currentLine
                     chapterUrl = content.a['href']
                     Sections = scrapeSectionNames(chapterUrl)
-
                     if Sections is not None:
                         current_chapter['repealed'] = False
                         current_chapter['sections'] = Sections
