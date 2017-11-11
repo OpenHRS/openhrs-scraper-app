@@ -70,17 +70,17 @@ def create_path(division, title, chapter, section):
     if not os.path.exists(path):
         os.makedirs(path)
 
-    outfile = open('output/hrscurrent/division/' +
+    outfile = open('output/' + filename + '/division/' +
                    str(division['number']) + '.json', 'w')
     json.dump(division_json, outfile, sort_keys=True,
               indent=4, separators=(',', ': '))
 
-    outfile = open('output/hrscurrent/division/' + str(division['number']) +
+    outfile = open('output/' + filename + '/division/' + str(division['number']) +
                    '/title/' + str(title['number']) + '.json', 'w')
     json.dump(title_json, outfile, sort_keys=True,
               indent=4, separators=(',', ': '))
 
-    outfile = open('output/hrscurrent/division/' + str(division['number']) +
+    outfile = open('output/' + filename + '/division/' + str(division['number']) +
                    '/title/' + str(title['number']) +
                    '/chapter/' + str(chapter['number']) + '.json', 'w')
     json.dump(chapter_json, outfile, sort_keys=True,
@@ -92,7 +92,7 @@ def create_path(division, title, chapter, section):
                             'number': section['number'],
                             'text': section['text']}
 
-            outfile = open('output/hrscurrent/division/' + str(division['number']) +
+            outfile = open('output/' + filename + '/division/' + str(division['number']) +
                            '/title/' + str(title['number']) +
                            '/chapter/' + str(chapter['number']) +
                            '/section/' + str(chapter['number']) + '-' + str(section['number']) + '.json', 'w')
