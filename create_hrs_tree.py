@@ -170,7 +170,7 @@ def repealedInCheckMultiples(Sections, chapter, multiList):
     # names
     length = len(multiList) - 1
     for x in range(1, length):
-        if re.search('[0-9\.]+', multiList[x]) is not None:
+        if re.search('^\d+(\.\d+)?$', multiList[x]) is not None:
             new_section = float(multiList[x])
             new_section = floatstrip(new_section)
             appendSection(Sections, [chapter, new_section], 'Repealed', None)
