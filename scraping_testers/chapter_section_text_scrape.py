@@ -214,7 +214,7 @@ def scrapeSectionNames(url):
 
         # Looks for statute code in Regex ex. 123-45.5
         rgx_code = re.search(
-            '([\d\w]+)\-((\d+\.\d+\w+)|(\d+\.\d+)|(\d+\w{1})|(\d+))',
+            '([\d\w]+)\-((\d+\.\d+\w+)|(\d+\.\d+)|(\d+\w{1})|(\d+))|(\d+\:\d+\w?-\d+\w?)',
             clean_line)
 
         if rgx_code is not None:
@@ -240,21 +240,26 @@ def scrapeSectionNames(url):
             if secNameBegin1 is not None:
                 curr_section_name = curr_section_name.replace(
                     secNameBegin1.group(0), "")
-                curr_chapter_section[1] = curr_chapter_section[
-                    0] + '-' + curr_chapter_section[1]
+
+            # If chapter-section has a colon
+            secNumBegin1 = re.search('(^\d+\:)', curr_chapter_section[0])
+            if secNumBegin1 is not None:
+                frags = curr_chapter_section[0].split(':')
+                curr_chapter_section[0] = frags[0]
+                curr_chapter_section[1] = frags[1] + '-' + curr_chapter_section[1]
 
             # If the curr_chapter_section ends w/ a capital letter
             # and curr_section_name starts with a lowercase letter
             # and has stuff after it
             chapSecEnd = re.search('[A-Z]$', curr_chapter_section[1])
-            secNameBegin = re.search('^[A-Z]?[A-Za-z]{3,}', curr_section_name)
+            secNameBegin = re.search('^[a-z]{3,}', curr_section_name)
 
             if chapSecEnd is not None and secNameBegin is not None:
                 curr_section_name = curr_chapter_section[
                     1][-1] + curr_section_name
                 curr_chapter_section[1] = curr_chapter_section[1][:-1]
 
-            extra_letter = re.search('[A-Z]', curr_chapter_section[1])
+            extra_letter = re.search('[A-Z]$', curr_chapter_section[1])
 
             if extra_letter is not None:
                 curr_chapter_section[1] = curr_chapter_section[1][:-1]
@@ -285,8 +290,8 @@ def scrapeSectionNames(url):
 
 
 def main():
-    Chapter = {"number": 205, "name": "UNIFORM CHILD-CUSTODY JURISDICTION AND ENFORCEMENT ACT", "repealed": False}
-    url = 'http://www.capitol.hawaii.gov/hrscurrent/Vol12_Ch0501-0588/HRS0583A/HRS_0583A-.htm'
+    Chapter = {"number": 412, "name": "UNIFORM CHILD-CUSTODY JURISDICTION AND ENFORCEMENT ACT", "repealed": False}
+    url = 'http://www.capitol.hawaii.gov/hrscurrent/Vol08_Ch0401-0429/HRS0412/HRS_0412-.htm'
     Sections = scrapeSectionNames(url)
 
     if Sections is None:
