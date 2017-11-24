@@ -338,39 +338,55 @@ def scrape_section_names(url):
     return sections
 
 
-def create_section_url(base_url, section):
-    section_url = None
+def create_article_url(section):
+    """ Helper function to create_section_url
+    :param section: section string containing article ex. 3-506.5
+    :return: String of url to section
+    """
+    article_url = None
+    article_split = section.split('-')
+    digit_split = article_split[1].split('.')
 
-    if '.' in section:
-        # Check for articles with digits ex. 490:1-1.5
-        if '-' in section:
-            article_split = section.split('-')
-            split_digit = article_split[1].split('.')
-
-            # Check if there is a letter
-            if re.search('[a-zA-Z]', article_split[0]):
-                section_url = str(article_split[0]).zfill(
-                    5) + '-' + str(split_digit[0]).zfill(4) + '_' + str(split_digit[1]).zfill(4) + '.htm'
-            else:
-                section_url = str(article_split[0]).zfill(
-                    4) + '-' + str(split_digit[0]).zfill(4) + '_' + str(split_digit[1]).zfill(4) + '.htm'
-        else:
-            split_digit = section.split('.')
-            section_url = str(split_digit[0]).zfill(
-                4) + "_" + str(split_digit[1]).zfill(4) + '.htm'
+    # Special case where letters need a zfill of 5
+    if re.search('[a-zA-Z]', article_split[0]):
+        section_a = article_split[0].zfill(5)
     else:
-        # Check for articles
-        if '-' in section:
-            article_split = section.split('-')
+        section_a = article_split[0].zfill(4)
 
-            if re.search('[a-zA-Z]', article_split[0]):
-                section_url = article_split[0].zfill(
-                    5) + '-' + article_split[1].zfill(4) + '.htm'
-            else:
-                section_url = article_split[0].zfill(
-                    4) + '-' + article_split[1].zfill(4) + '.htm'
-        else:
-            section_url = section.zfill(4) + '.htm'
+    # Check if there is a digit
+    if len(digit_split) > 1:
+        section_b = digit_split[0].zfill(4)
+        section_digit = digit_split[1].zfill(4)
+        article_url = section_a + '-' + section_b + '_' + section_digit + '.htm'
+    else:
+        section_b = article_split[1].zfill(4)
+        article_url = section_a + '-' + section_b + '.htm'
+
+    return article_url
+
+
+def create_section_url(base_url, section):
+    """ Helper function to get_section_text_data
+    :param base_url: The base chapter URL
+    :param section: The section number ex. 105, 105D, 105.5
+    :return: String of url to section
+    """
+
+    section_url = None
+    section = str(section)
+
+    # Check for Articles
+    if '-' in section:
+        section_url = create_article_url(section)
+
+    elif '.' in section:
+        split_digit = section.split('.')
+        section_url = split_digit[0].zfill(
+            4) + "_" + split_digit[1].zfill(4) + '.htm'
+    else:
+        section_url = section.zfill(4) + '.htm'
+
+    section_url = base_url.replace('.htm', section_url)
     return section_url
 
 
@@ -384,21 +400,20 @@ def get_section_text_data(url, section):
     text_data = None
     section_url = create_section_url(url, section)
 
-    base_url = url.replace('.htm', section_url)
-
     good = True
     while text_data is None:
         try:
-            html_to_parse = requests.get(base_url)
+            html_to_parse = requests.get(section_url)
             soup = BeauSoup(html_to_parse.text, 'lxml')
 
             if good is False:
-                print("Reconnection to " + base_url + ". SUCCESSFUL...")
+                print("Reconnection to " + section_url + ". SUCCESSFUL...")
                 good = True
             text_data = soup.find('body')
         except:
             # Reconnect on connection timeout
-            print("Connection timeout on: " + base_url + ". RECONNECTING...")
+            print("Connection timeout on: " +
+                  section_url + ". RECONNECTING...")
             good = False
             text_data = None
 
