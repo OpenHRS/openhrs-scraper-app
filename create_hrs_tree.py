@@ -184,7 +184,7 @@ def repealed_in_check_multiples(sections, chapter, multilist):
 These functions handle individual section scraping and their dependencies
 
 Functions gather information from the HRS table of contents given
-by http://www.capitol.hawaii.gov/docs/HRS.htm and append appropriate section 
+by http://www.capitol.hawaii.gov/docs/HRS.htm and append appropriate section
 data in a tree format by Division Title and Chapter.
 """
 
@@ -338,9 +338,7 @@ def scrape_section_names(url):
     return sections
 
 
-def get_section_text_data(url, section):
-    """ Prepares the data by getting rid of bold text """
-    text_data = None
+def create_section_url(base_url, section):
     section_url = None
 
     if '.' in section:
@@ -373,23 +371,34 @@ def get_section_text_data(url, section):
                     4) + '-' + article_split[1].zfill(4) + '.htm'
         else:
             section_url = section.zfill(4) + '.htm'
+    return section_url
+
+
+def get_section_text_data(url, section):
+    """ Driver function that gathers section text
+    :param url: The base chapter URL
+    :param section: The section number ex. 105, 105D, 105.5
+    :return: The text for a given section number.
+    """
+
+    text_data = None
+    section_url = create_section_url(url, section)
 
     base_url = url.replace('.htm', section_url)
 
     good = True
-
     while text_data is None:
         try:
             html_to_parse = requests.get(base_url)
             soup = BeauSoup(html_to_parse.text, 'lxml')
 
             if good is False:
-                print("Reconnection to " + base_url + " SUCCESSFUL...")
+                print("Reconnection to " + base_url + ". SUCCESSFUL...")
                 good = True
             text_data = soup.find('body')
         except:
             # Reconnect on connection timeout
-            print("Connection timeout on: " + base_url + " RECONNECTING...")
+            print("Connection timeout on: " + base_url + ". RECONNECTING...")
             good = False
             text_data = None
 
