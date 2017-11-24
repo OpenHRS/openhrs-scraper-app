@@ -6,7 +6,7 @@ import math
 from bs4 import BeautifulSoup as BeauSoup
 
 no_text = False
-version = None
+version = 'hrscurrent'
 VERSIONS = ['hrscurrent',
             'hrs2016',
             'hrs2015',
@@ -38,12 +38,14 @@ if len(sys.argv) > 1:
             print('Scraping ' + version + ' with no text')
         else:
             print('Scraping ' + version)
+    else:
+        print("No version was provided. Defaulting to hrscurrent")
 
-####################################
-#
-# Line Parsing Functions
-#
-####################################
+
+""" Line parsing functions
+
+These functions handle general line parsing
+"""
 
 
 def cleanup_text(line):
@@ -93,11 +95,13 @@ def floatstrip(x):
     else:
         return str(x)
 
-####################################
-#
-# Multiple Line checking (to and ',')
-#
-####################################
+
+""" Multiple line parsing functions
+
+These functions handle lines on chapter pages that contain 'to' and ','
+
+For example: '206E-151 to 159  Repealed' or '206E-151, 152  Repealed'
+"""
 
 
 def check_multiples(sections, curr_chapter_section, curr_section_name):
@@ -114,7 +118,7 @@ def check_multiples(sections, curr_chapter_section, curr_section_name):
     if multiples[0] == ',':
         multiples = clean_commas(curr_section_name).split(' ')
         append_section(sections, [chapter, section], 'Repealed', None)
-        repealed_in_check_multiples(sections, chapter, multiples);
+        repealed_in_check_multiples(sections, chapter, multiples)
         found_multiples = True
 
     # Ex. 16.5 to 16.8 REPEALED
@@ -174,11 +178,15 @@ def repealed_in_check_multiples(sections, chapter, multilist):
             new_section = floatstrip(new_section)
             append_section(sections, [chapter, new_section], 'Repealed', None)
 
-####################################
-#
-# Section Scraping
-#
-####################################
+
+""" Section scraping functions
+
+These functions handle individual section scraping and their dependencies
+
+Functions gather information from the HRS table of contents given
+by http://www.capitol.hawaii.gov/docs/HRS.htm and append appropriate section 
+data in a tree format by Division Title and Chapter.
+"""
 
 
 def prep_section_name_data(url):
@@ -254,7 +262,8 @@ def scrape_section_names(url):
         if rgx_code is not None:
             # If something is being tracked already, append it
             if curr_section_name != "" and curr_chapter_section != "":
-                append_section(sections, curr_chapter_section, curr_section_name, url)
+                append_section(sections, curr_chapter_section,
+                               curr_section_name, url)
 
             # If space does not separate chapter-section and section name
             # do something about it
@@ -281,7 +290,8 @@ def scrape_section_names(url):
             if sec_num_begin_1 is not None:
                 frags = curr_chapter_section[0].split(':')
                 curr_chapter_section[0] = frags[0]
-                curr_chapter_section[1] = frags[1] + '-' + curr_chapter_section[1]
+                curr_chapter_section[1] = frags[
+                    1] + '-' + curr_chapter_section[1]
 
             # If the curr_chapter_section ends w/ a capital letter
             # and curr_section_name starts with a lowercase letter
@@ -294,7 +304,8 @@ def scrape_section_names(url):
                     1][-1] + curr_section_name
                 end_punc = re.search('([;, ]*)$', curr_chapter_section[1])
                 if end_punc is not None:
-                    curr_chapter_section[1] = curr_chapter_section[1].replace(end_punc.group(0), "")
+                    curr_chapter_section[1] = curr_chapter_section[
+                        1].replace(end_punc.group(0), "")
                 else:
                     curr_chapter_section[1] = curr_chapter_section[1][:-1]
 
@@ -398,7 +409,8 @@ def append_section(sections, chapter_section, section_name, url):
 
         # ... and delete excess text if it exists
         if excess_text is not None:
-            chapter_section[1] = chapter_section[1].replace(excess_text.group(3), '')
+            chapter_section[1] = chapter_section[
+                1].replace(excess_text.group(3), '')
 
         text = get_section_text_data(url, chapter_section[1])
         section = {"number": chapter_section[1],
@@ -410,23 +422,32 @@ def append_section(sections, chapter_section, section_name, url):
             else:
                 # The code explains everything.
                 if ('§' + chapter_section[0] + u'\u2011' + chapter_section[1]) in text and section_name in text:
-                    text = text.replace(section_name + '.' if section_name[-1] != '.' else section_name, '')
-                    text = text.replace('§' + chapter_section[0] + u'\u2011' + chapter_section[1], '')
+                    text = text.replace(
+                        section_name + '.' if section_name[-1] != '.' else section_name, '')
+                    text = text.replace(
+                        '§' + chapter_section[0] + u'\u2011' + chapter_section[1], '')
                 elif ('§' + chapter_section[0] + '-' + chapter_section[1]) in text and section_name in text:
-                    text = text.replace(section_name + '.' if section_name[-1] != '.' else section_name, '')
-                    text = text.replace('§' + chapter_section[0] + '-' + chapter_section[1], '')
+                    text = text.replace(
+                        section_name + '.' if section_name[-1] != '.' else section_name, '')
+                    text = text.replace(
+                        '§' + chapter_section[0] + '-' + chapter_section[1], '')
                 else:
                     if section_name in text:
-                        text = text.replace(section_name + '.' if section_name[-1] != '.' else section_name, '')
+                        text = text.replace(
+                            section_name + '.' if section_name[-1] != '.' else section_name, '')
 
                     if ('§' + chapter_section[0] + u'\u2011' + chapter_section[1]) in text:
-                        text = text.replace('§' + chapter_section[0] + u'\u2011' + chapter_section[1], '')
+                        text = text.replace(
+                            '§' + chapter_section[0] + u'\u2011' + chapter_section[1], '')
                     elif ('§' + chapter_section[0] + '-' + chapter_section[1]) in text:
-                        text = text.replace('§' + chapter_section[0] + '-' + chapter_section[1], '')
+                        text = text.replace(
+                            '§' + chapter_section[0] + '-' + chapter_section[1], '')
                     elif (chapter_section[0] + u'\u2011' + chapter_section[1]) in text:
-                        text = text.replace(chapter_section[0] + u'\u2011' + chapter_section[1], '')
+                        text = text.replace(
+                            chapter_section[0] + u'\u2011' + chapter_section[1], '')
                     elif (chapter_section[0] + '-' + chapter_section[1]) in text:
-                        text = text.replace(chapter_section[0] + '-' + chapter_section[1], '')
+                        text = text.replace(
+                            chapter_section[0] + '-' + chapter_section[1], '')
 
                 # Check for brackets
                 brackets = re.search('^\[\]', text)
