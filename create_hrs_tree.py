@@ -231,12 +231,11 @@ def prep_section_name_data(url):
         return -1
 
 
-def scrape_section_names(url):
-    sections = []
-    url = url.replace('hrscurrent', version)
-    valid = requests.get(url)
+def get_valid_url(url):
+    return_url = url
+    valid = requests.get(return_url)
 
-    # Validate URL. If 404, get similar URL.
+    # If the URL is invalid, change URL to something similar
     if valid.status_code == 404:
         toc = requests.get('http://www.capitol.hawaii.gov/' + version)
 
@@ -248,17 +247,62 @@ def scrape_section_names(url):
                 href = link['href']
                 if href != '/':
                     split_href = href.split("/")
-                    split_url = url.split("/")
+                    split_url = return_url.split("/")
                     href_extr = split_href[2]
                     url_extr = split_url[4]
                     if href_extr.split("_")[0] == url_extr.split("_")[0]:
-                        url = url.replace(url_extr, href_extr)
+                        return_url = return_url.replace(url_extr, href_extr)
                         url_should_be_ok = True
 
-    line_data = -1
-    while line_data == -1:
-        line_data = prep_section_name_data(url)
+    return return_url
 
+def get_chapter_section(string):
+    chap_sec = []
+
+    # Check if chapter-section contains a colon
+    get_colon = re.search("^\d+:", string)
+    if get_colon is not None:
+        chap_sec = string.split(':')
+    else:
+        chap_sec = string.split('-')
+    return chap_sec
+
+def clean_buffer(secs, chap_sect, sec_name, url):
+    if sec_name != "" and chap_sect != "":
+        append_section(secs, chap_sect, sec_name, url)
+
+def process_line(line):
+    sec_name = ""
+    chap_sec = ""
+    rgx_code = re.search('(\d+:)?(\d+\w?)-((\d+\.)?(\d+\w?)?)', line)
+    if rgx_code is not None:
+        # The section name is the current line - the statute code
+        sec_name = line.replace(rgx_code.group(0), '').strip()
+        chap_sec = get_chapter_section(rgx_code.group(0))
+
+        extra_text = re.search(
+            '(\d+[A-Z]?-\d+(\.\d)?[A-Z]?)([A-Z][a-z]+$)', line)
+        if extra_text is not None:
+            line = line.replace(
+                extra_text.group(1), extra_text.group(1) + ' ')
+
+        # If the section name begins with /\d+ / delete it
+        sec_name_begin_1 = re.search('(^\d+ )', sec_name)
+        if sec_name_begin_1 is not None:
+            sec_name = sec_name.replace(sec_name_begin_1.group(0), "")
+
+        chap_sec_end = re.search('[A-Z]$', chap_sec[1])
+        sec_name_begin = re.search('^[a-z]{3,}', sec_name)
+
+        if chap_sec_end is not None and sec_name_begin is not None:
+            sec_name = chap_sec[1][-1] + sec_name
+            chap_sec[1] = chap_sec[1][:-1]
+
+    return [sec_name, chap_sec]
+
+def scrape_section_names(url):
+    sections = []
+    line_data = prep_section_name_data(get_valid_url(url.replace('hrscurrent', version)))
     curr_section_name = ""
     curr_chapter_section = ""
 
@@ -266,90 +310,28 @@ def scrape_section_names(url):
     if line_data is not None:
         for line in line_data:
             clean_line = cleanup_text(line).strip()
-
-            # Looks for statute code in Regex ex. 123-45.5
-            rgx_code = re.search(
-                '(\d:)?(\d+\w?)-((\d+\.)?(\d+\w?)?)', clean_line)
-
-            if rgx_code is not None:
-                # If something is being tracked already, append it
-                if curr_section_name != "" and curr_chapter_section != "":
-                    append_section(sections, curr_chapter_section,
-                                   curr_section_name, url)
-
-                # The section name is the current line - the statute code
-                curr_section_name = clean_line.replace(
-                    rgx_code.group(0), '').strip()
-                curr_chapter_section = rgx_code.group(0).split('-')
-
-                # If space does not separate chapter-section and section name
-                # do something about it
-                extra_text = re.search(
-                    '(\d+[A-Z]?-\d+(\.\d)?[A-Z]?)([A-Z][a-z]+$)',
-                    clean_line)
-                if extra_text is not None:
-                    clean_line = clean_line.replace(
-                        extra_text.group(1), extra_text.group(1) + ' ')
-
-
-                # If the section name begins with /\d+ / delete it
-                sec_name_begin_1 = re.search('(^\d+ )', curr_section_name)
-                if sec_name_begin_1 is not None:
-                    curr_section_name = curr_section_name.replace(
-                        sec_name_begin_1.group(0), "")
-
-                # If chapter-section has a colon
-                sec_num_begin_1 = re.search('(^\d+:)', curr_chapter_section[0])
-                if sec_num_begin_1 is not None:
-                    frags = curr_chapter_section[0].split(':')
-                    curr_chapter_section[0] = frags[0]
-                    curr_chapter_section[1] = frags[
-                        1] + '-' + curr_chapter_section[1]
-
-                # If the curr_chapter_section ends w/ a capital letter
-                # and curr_section_name starts with a lowercase letter
-                # and has stuff after it
-                chap_sec_end = re.search('[A-Z]$', curr_chapter_section[1])
-                sec_name_begin = re.search('^[a-z]{3,}', curr_section_name)
-
-                if chap_sec_end is not None and sec_name_begin is not None:
-                    curr_section_name = curr_chapter_section[
-                        1][-1] + curr_section_name
-                    end_punc = re.search('([;, ]*)$', curr_chapter_section[1])
-                    if end_punc is not None:
-                        curr_chapter_section[1] = curr_chapter_section[
-                            1].replace(end_punc.group(0), "")
-                    else:
-                        curr_chapter_section[1] = curr_chapter_section[1][:-1]
-
-                extra_letter = re.search('[A-Z]$', curr_chapter_section[1])
-
-                if extra_letter is not None:
-                    curr_chapter_section[1] = curr_chapter_section[1][:-1]
-
+            proc_line = process_line(clean_line)
+            if proc_line[0] != "" and proc_line[1] != "":
+                clean_buffer(sections, curr_chapter_section, curr_section_name, url)
+                curr_section_name = proc_line[0]
+                curr_chapter_section = proc_line[1]
                 # Check if there are multiple statutes in a line
-                found_multiples = check_multiples(
-                    sections, curr_chapter_section, curr_section_name)
-
-                if found_multiples:
+                if check_multiples(sections, curr_chapter_section, curr_section_name):
                     curr_section_name = ""
                     curr_chapter_section = ""
 
             # If there is no statute in the line, append to previous name
-            elif check_text(clean_line):
-                if word_count_section_name(clean_line) < 20:
-                    curr_section_name += " " + clean_line
+            elif check_text(clean_line) and word_count_section_name(clean_line) < 20:
+                curr_section_name += " " + clean_line
 
-    # Check for anything left in the buffer
-    if curr_section_name != "" and curr_chapter_section != "":
-        append_section(sections, curr_chapter_section, curr_section_name, url)
+        # Check for anything left in the buffer
+        clean_buffer(sections, curr_chapter_section, curr_section_name, url)
 
     # If nothing was scraped then the whole chapter was actually repealed
     elif "REPEALED" in curr_section_name:
         sections = None
 
     return sections
-
 
 def create_article_url(section):
     """ Helper function to create_section_url
@@ -589,7 +571,7 @@ def scrape_toc():
                     current_chapter["name"] = current_line
                     chapter_url = content.a['href']
                     sections = scrape_section_names(chapter_url)
-                    if sections is not None:
+                    if sections is not None and len(sections) > 0:
                         current_chapter['repealed'] = False
                         current_chapter['sections'] = sections
                     else:
