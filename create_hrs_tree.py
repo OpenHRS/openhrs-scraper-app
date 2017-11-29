@@ -232,6 +232,10 @@ def prep_section_name_data(url):
 
 
 def get_valid_url(url):
+    """ Validates specified URL and returns valid URL if invalid
+    :param url: the URL to validate
+    :return: original URL if valid, otherwise a valid URL
+    """
     return_url = url
     valid = requests.get(return_url)
 
@@ -257,6 +261,10 @@ def get_valid_url(url):
     return return_url
 
 def get_chapter_section(string):
+    """ Given a line of text, extract the chapter-section if it exists
+    :param string: string from which to extract the chapter-section number
+    :return: chapter-section if one exists
+    """
     chap_sec = []
 
     # Check if chapter-section contains a colon
@@ -268,10 +276,21 @@ def get_chapter_section(string):
     return chap_sec
 
 def clean_buffer(secs, chap_sect, sec_name, url):
+    """ If neither chapter-section nor section name are empty, append it
+    :param secs: section object
+    :param chap-sect: chapter-section number
+    :param sec_name: section names
+    :param url: URL of chapter-section
+    :return: none
+    """
     if sec_name != "" and chap_sect != "":
         append_section(secs, chap_sect, sec_name, url)
 
 def process_line(line):
+    """ Process a line and extract the chapter-section number and name
+    :param line: string to process
+    :return: chapter-section name and number in an array
+    """
     sec_name = ""
     chap_sec = ""
     rgx_code = re.search('(\d+:)?(\d+\w?)-((\d+\.)?(\d+\w?)?)', line)
@@ -302,6 +321,10 @@ def process_line(line):
     return [sec_name, chap_sec]
 
 def scrape_section_names(url):
+    """ Given a URL of a chapter, extract and return the names of its sections
+    :param url: chapter URL
+    :return: object containing section data of chapter specified in URL
+    """
     sections = []
     line_data = prep_section_name_data(get_valid_url(url.replace('hrscurrent', version)))
     curr_section_name = ""
@@ -426,12 +449,12 @@ def get_section_text_data(url, section):
 
 
 def append_section(sections, chapter_section, section_name, url):
+    """ Appends a section to a parent Section list """
     section = {"number": chapter_section[1],
                "name": section_name}
 
     text = None
 
-    """ Appends a section to a parent Section list """
     if url is not None and not no_text:
 
         # Check for excess text in section number string...
