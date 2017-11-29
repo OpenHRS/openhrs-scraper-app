@@ -294,6 +294,7 @@ def process_line(line):
         chap_sec_end = re.search('[A-Z]$', chap_sec[1])
         sec_name_begin = re.search('^[a-z]{3,}', sec_name)
 
+        # If chapter-section ends with first letter of the actual section name
         if chap_sec_end is not None and sec_name_begin is not None:
             sec_name = chap_sec[1][-1] + sec_name
             chap_sec[1] = chap_sec[1][:-1]
