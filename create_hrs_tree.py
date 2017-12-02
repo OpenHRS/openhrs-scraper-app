@@ -3,10 +3,11 @@ import requests
 import re
 import sys
 import math
-from bs4 import BeautifulSoup as bs
+import time
+from bs4 import BeautifulSoup as BeauSoup
 
 no_text = False
-version = None
+version = 'hrscurrent'
 VERSIONS = ['hrscurrent',
             'hrs2016',
             'hrs2015',
@@ -38,30 +39,34 @@ if len(sys.argv) > 1:
             print('Scraping ' + version + ' with no text')
         else:
             print('Scraping ' + version)
-
-####################################
-#
-# Line Parsing Functions
-#
-####################################
+    else:
+        print("No version was provided. Defaulting to hrscurrent")
 
 
-def cleanText(line):
+""" Line parsing functions
+
+These functions handle general line parsing
+"""
+
+
+def cleanup_text(line):
     """ Function that cleans up all known defects that may be in the html """
     clean_text = line.get_text().replace(u'\xa0', "").strip()
     clean_text = clean_text.replace('\r\n', ' ')
     clean_text = clean_text.replace(u'\u2011', '-')
+    clean_text = clean_text.replace(u'\u00a7', '')
+    clean_text = clean_text.strip(' \t\n\r')
 
     return clean_text
 
 
-def cleanCommas(line):
-    # Helper function in checkMultiples to remove multiple commas
+def clean_commas(line):
+    # Helper function in check_multiples to remove multiple commas
     clean_text = line.replace(',', '')
     return clean_text
 
 
-def checkText(line):
+def check_text(line):
     """ Compares a line to see if there are any blacklisted words"""
     is_okay = True
 
@@ -72,14 +77,14 @@ def checkText(line):
     if rgx_check is not None:
         is_okay = False
 
-    for word in blacklist:
-        if word in line:
-            is_okay = False
-        elif line == "":
-            is_okay = False
-
-    if "REPEALED" in line:
-        is_okay = True
+    if line == "":
+        is_okay = False
+    else:
+        for word in blacklist:
+            if word in line:
+                is_okay = False
+        if "REPEALED" in line:
+            is_okay = True
 
     return is_okay
 
@@ -91,14 +96,16 @@ def floatstrip(x):
     else:
         return str(x)
 
-####################################
-#
-# Multiple Line checking (to and ',')
-#
-####################################
+
+""" Multiple line parsing functions
+
+These functions handle lines on chapter pages that contain 'to' and ','
+
+For example: '206E-151 to 159  Repealed' or '206E-151, 152  Repealed'
+"""
 
 
-def checkMultiples(Sections, curr_chapter_section, curr_section_name):
+def check_multiples(sections, curr_chapter_section, curr_section_name):
     """ Checks a line for multiple statutes and appends to Sections """
     found_multiples = False
     chapter = curr_chapter_section[0]
@@ -110,9 +117,9 @@ def checkMultiples(Sections, curr_chapter_section, curr_section_name):
     # all REPEALED
 
     if multiples[0] == ',':
-        multiples = cleanCommas(curr_section_name).split(' ')
-        appendSection(Sections, [chapter, section], 'Repealed', None)
-        repealedInCheckMultiples(Sections, chapter, multiples)
+        multiples = clean_commas(curr_section_name).split(' ')
+        append_section(sections, [chapter, section], 'Repealed', None)
+        repealed_in_check_multiples(sections, chapter, multiples)
         found_multiples = True
 
     # Ex. 16.5 to 16.8 REPEALED
@@ -142,16 +149,15 @@ def checkMultiples(Sections, curr_chapter_section, curr_section_name):
                     if is_article:
                         article_section = curr_section_list[
                             0] + '-' + floatstrip(curr_section)
-                        appendSection(
-                            Sections, [chapter, article_section], 'Repealed', None)
+                        append_section(
+                            sections, [chapter, article_section], 'Repealed', None)
                     else:
-                        appendSection(Sections, [chapter, floatstrip(
+                        append_section(sections, [chapter, floatstrip(
                             curr_section)], 'Repealed', None)
                     curr_section += increment
                     if increment == .1:
-                        if re.search('\.[1-9]{2,}$', str(curr_section)) is not None:
+                        if re.search('\.\d{2,}$', str(curr_section)) is not None:
                             curr_section = round(curr_section, 1)
-
 
             found_multiples = True
 
@@ -162,303 +168,352 @@ def checkMultiples(Sections, curr_chapter_section, curr_section_name):
     return found_multiples
 
 
-def repealedInCheckMultiples(Sections, chapter, multiList):
+def repealed_in_check_multiples(sections, chapter, multilist):
     # Ex HRS 27-12-0001 not showing in json file
     # because REPEALED is in a line with multiple commas and other section
     # names
-    length = len(multiList) - 1
+    length = len(multilist) - 1
     for x in range(1, length):
-        if re.search('[0-9\.]+', multiList[x]) is not None:
-            new_section = float(multiList[x])
+        if re.search('^\d+(\.\d+)?$', multilist[x]) is not None:
+            new_section = float(multilist[x])
             new_section = floatstrip(new_section)
-            appendSection(Sections, [chapter, new_section], 'Repealed', None)
-
-####################################
-#
-# Section Scraping
-#
-####################################
+            append_section(sections, [chapter, new_section], 'Repealed', None)
 
 
-def prepSectionNameData(url):
+""" Section scraping functions
+
+These functions handle individual section scraping and their dependencies
+
+Functions gather information from the HRS table of contents given
+by http://www.capitol.hawaii.gov/docs/HRS.htm and append appropriate section
+data in a tree format by Division Title and Chapter.
+"""
+
+
+def prep_section_name_data(url):
     """ Preps the data by getting rid of bolded text """
-    baseURL = url
-    try:
-        html_to_parse = requests.get(baseURL)
-        soup = bs(html_to_parse.text, 'lxml')
-    except:
-        html_to_parse = requests.get(baseURL)
-        soup = bs(html_to_parse.text, 'lxml')
+    base_url = url
 
-    # Prep the data by taking out the chapter title in bold
-    bold_titles = soup.find_all('b')
-    leftover_text = ""
-    get_stuff = False
-    for bold_title in bold_titles:
-        if bold_title.get_text():
-            if get_stuff is False:
+    html_to_parse = ''
+
+    while html_to_parse == '':
+        try:
+            html_to_parse = requests.get(base_url)
+
+            if html_to_parse.status_code == 200:
+                soup = BeauSoup(html_to_parse.text, 'lxml')
+
+                # Prep the data by taking out the chapter title in bold
+                bold_titles = soup.find_all('b')
                 leftover_text = ""
+                get_stuff = False
+                for bold_title in bold_titles:
+                    if bold_title.get_text():
+                        if get_stuff is False:
+                            leftover_text = ""
 
-            rgx_code = re.search(
-                '([\d\w]+)\-((\d+\.\d+\w+)|(\d+\.\d+)|(\d+\w{1})|(\d+))',
-                bold_title.get_text())
+                        if "REPEALED" in bold_title.get_text():
+                            continue
 
-            if version in VERSIONS[-4:]:
-                if rgx_code is None and get_stuff is False:
-                    rgx_code = re.search('[\w ]*\d+\w*\.?', bold_title.get_text())
-                    if rgx_code is not None:
-                        leftover_text = bold_title
+                        bold_title.decompose()
 
-                if rgx_code is None and get_stuff is True:
-                    rgx_code = re.search('.*$', bold_title.get_text())
-                    if rgx_code is not None:
-                        leftover_text.append(rgx_code.match)
-                        bold_title = leftover_text
-                        get_stuff = False
+                if version in VERSIONS[-4:]:
+                    return soup.find_all('p')
+                else:
+                    return soup.find_all('p', {'class': 'RegularParagraphs'})
 
-            if "REPEALED" in bold_title.get_text() or rgx_code is not None:
-                continue
+            elif html_to_parse.status_code == 404:
+                stat_code = 404
+                break
+        except:
+            continue
+    else:
+        return -1
 
-            bold_title.decompose()
 
-    return soup.find_all('p') if version in VERSIONS[-4:] else soup.find_all('p', {'class': 'RegularParagraphs'})
+def get_valid_url(url):
+    """ Validates specified URL and returns valid URL if invalid
+    :param url: the URL to validate
+    :return: original URL if valid, otherwise a valid URL
+    """
+    return_url = url
+    valid = requests.get(return_url)
 
-def scrapeSectionNames(url):
-    Sections = []
-    url = url.replace('hrscurrent', version)
-    line_data = prepSectionNameData(url)
+    # If the URL is invalid, change URL to something similar
+    if valid.status_code == 404:
+        toc = requests.get('http://www.capitol.hawaii.gov/' + version)
 
+        soup = BeauSoup(toc.text, 'lxml')
+        links = soup.find_all('a')
+        url_should_be_ok = False
+        for link in links:
+            if not url_should_be_ok:
+                href = link['href']
+                if href != '/':
+                    split_href = href.split("/")
+                    split_url = return_url.split("/")
+                    href_extr = split_href[2]
+                    url_extr = split_url[4]
+                    if href_extr.split("_")[0] == url_extr.split("_")[0]:
+                        return_url = return_url.replace(url_extr, href_extr)
+                        url_should_be_ok = True
+
+    return return_url
+
+def get_chapter_section(string):
+    """ Given a line of text, extract the chapter-section if it exists
+    :param string: string from which to extract the chapter-section number
+    :return: chapter-section if one exists
+    """
+    chap_sec = []
+
+    # Check if chapter-section contains a colon
+    get_colon = re.search("^\d+:", string)
+    if get_colon is not None:
+        chap_sec = string.split(':')
+    else:
+        chap_sec = string.split('-')
+    return chap_sec
+
+def clean_buffer(secs, chap_sect, sec_name, url):
+    """ If neither chapter-section nor section name are empty, append it
+    :param secs: section object
+    :param chap-sect: chapter-section number
+    :param sec_name: section names
+    :param url: URL of chapter-section
+    :return: none
+    """
+    if sec_name != "" and chap_sect != "":
+        append_section(secs, chap_sect, sec_name, url)
+
+def process_line(line):
+    """ Process a line and extract the chapter-section number and name
+    :param line: string to process
+    :return: chapter-section name and number in an array
+    """
+    sec_name = ""
+    chap_sec = ""
+    rgx_code = re.search('(\d+:)?(\d+\w?)-((\d+\.)?(\d+\w?)?)', line)
+    if rgx_code is not None:
+        # The section name is the current line - the statute code
+        sec_name = line.replace(rgx_code.group(0), '').strip()
+        chap_sec = get_chapter_section(rgx_code.group(0))
+
+        extra_text = re.search(
+            '(\d+[A-Z]?-\d+(\.\d)?[A-Z]?)([A-Z][a-z]+$)', line)
+        if extra_text is not None:
+            line = line.replace(
+                extra_text.group(1), extra_text.group(1) + ' ')
+
+        # If the section name begins with /\d+ / delete it
+        sec_name_begin_1 = re.search('(^\d+ )', sec_name)
+        if sec_name_begin_1 is not None:
+            sec_name = sec_name.replace(sec_name_begin_1.group(0), "")
+
+        chap_sec_end = re.search('[A-Z]$', chap_sec[1])
+        sec_name_begin = re.search('^[a-z]{3,}', sec_name)
+
+        # If chapter-section ends with first letter of the actual section name
+        if chap_sec_end is not None and sec_name_begin is not None:
+            sec_name = chap_sec[1][-1] + sec_name
+            chap_sec[1] = chap_sec[1][:-1]
+
+    return [sec_name, chap_sec]
+
+def scrape_section_names(url):
+    """ Given a URL of a chapter, extract and return the names of its sections
+    :param url: chapter URL
+    :return: object containing section data of chapter specified in URL
+    """
+    sections = []
+    line_data = prep_section_name_data(get_valid_url(url.replace('hrscurrent', version)))
     curr_section_name = ""
     curr_chapter_section = ""
 
     # Go through each line (<p> tags) and associate the data
-    for line in line_data:
-        clean_line = cleanText(line).strip()
+    if line_data is not None:
+        for line in line_data:
+            clean_line = cleanup_text(line).strip()
+            proc_line = process_line(clean_line)
+            if proc_line[0] != "" and proc_line[1] != "":
+                clean_buffer(sections, curr_chapter_section, curr_section_name, url)
+                curr_section_name = proc_line[0]
+                curr_chapter_section = proc_line[1]
+                # Check if there are multiple statutes in a line
+                if check_multiples(sections, curr_chapter_section, curr_section_name):
+                    curr_section_name = ""
+                    curr_chapter_section = ""
 
-        # Looks for statute code in Regex ex. 123-45.5
-        rgx_code = re.search(
-            '([\d\w]+)\-((\d+\.\d+\w+)|(\d+\.\d+)|(\d+\w{1})|(\d+))',
-            clean_line)
-
-        if rgx_code is not None:
-            # If theres something being tracked already then append it
-            if curr_section_name != "" and curr_chapter_section != "":
-                appendSection(Sections, curr_chapter_section,
-                              curr_section_name, url)
-
-            # If space does not separate chapter-section and section name
-            # do something about it
-            extra_text = re.search(
-                '(\d+[A-Z]?-\d+(\.\d)?[A-Z]?)([A-Z]{1}[a-z]+$)',
-                clean_line)
-            if extra_text is not None:
-                clean_line = clean_line.replace(
-                    extra_text.group(1), extra_text.group(1) + ' ')
-
-            # The section name is the currentline - the statute code
-            curr_section_name = clean_line.replace(
-                rgx_code.group(0), '').strip()
-            curr_chapter_section = rgx_code.group(0).split('-')
-
-            # If the section name begins with /\d+:/ delete it
-            secNameBegin1 = re.search('(^\d+: )', curr_section_name)
-            if secNameBegin1 is not None:
-                curr_section_name = curr_section_name.replace(
-                    secNameBegin1.group(0), "")
-                curr_chapter_section[1] = curr_chapter_section[
-                    0] + '-' + curr_chapter_section[1]
-
-            # If the curr_chapter_section ends w/ a capital letter
-            # and curr_section_name starts with a lowercase letter
-            # and has stuff after it
-            chapSecEnd = re.search('[A-Z]$', curr_chapter_section[1])
-            secNameBegin = re.search('^[a-z]{3,}', curr_section_name)
-
-            if chapSecEnd is not None and secNameBegin is not None:
-                curr_section_name = curr_chapter_section[
-                    1][-1] + curr_section_name
-                endPunc = re.search('([;, ]*)$', curr_chapter_section[1])
-                if endPunc is not None:
-                    curr_chapter_section[1] = curr_chapter_section[1].replace(
-                        endPunc.group(0), "")
-                else:
-                    curr_chapter_section[1] = curr_chapter_section[1][:-1]
-
-            extra_letter = re.search('[A-Z]', curr_chapter_section[1])
-
-            if extra_letter is not None:
-                curr_chapter_section[1] = curr_chapter_section[1][:-1]
-
-            # Check if there are multiple statutes in a line
-            found_multiples = checkMultiples(
-                Sections, curr_chapter_section, curr_section_name)
-
-            if found_multiples:
-                curr_section_name = ""
-                curr_chapter_section = ""
-
-        # If there isnt a statute in the line then append to previous name
-        elif checkText(clean_line):
-            if wordCountSectionName(clean_line) < 20:
+            # If there is no statute in the line, append to previous name
+            elif check_text(clean_line) and word_count_section_name(clean_line) < 20:
                 curr_section_name += " " + clean_line
 
-    # Check for anything left in the buffer
-    if curr_section_name != "" and curr_chapter_section != "":
-        appendSection(Sections, curr_chapter_section,
-                      curr_section_name, url)
+        # Check for anything left in the buffer
+        clean_buffer(sections, curr_chapter_section, curr_section_name, url)
 
-    # If nothing was scraped then the whoel chapter was actually repealed
+    # If nothing was scraped then the whole chapter was actually repealed
     elif "REPEALED" in curr_section_name:
-        Sections = None
+        sections = None
 
-    return Sections
+    return sections
 
+def create_article_url(section):
+    """ Helper function to create_section_url
+    :param section: section string containing article ex. 3-506.5
+    :return: String of url to section
+    """
+    article_url = None
+    article_split = section.split('-')
+    digit_split = article_split[1].split('.')
 
-def getSectionTextData(url, section):
-    """ Preps the data by getting rid of bolded text """
-    text_data = None
-    section_url = None
-
-    if '.' in section:
-        # Check for articles with digits ex. 490:1-1.5
-        if '-' in section:
-            article_split = section.split('-')
-            split_digit = article_split[1].split('.')
-
-            # Check if there is a letter
-            if re.search('[a-zA-Z]', article_split[0]):
-                section_url = str(article_split[0]).zfill(
-                    5) + '-' + str(split_digit[0]).zfill(4) + '_' + str(split_digit[1]).zfill(4) + '.htm'
-            else:
-                section_url = str(article_split[0]).zfill(
-                    4) + '-' + str(split_digit[0]).zfill(4) + '_' + str(split_digit[1]).zfill(4) + '.htm'
-        else:
-            split_digit = section.split('.')
-            section_url = str(split_digit[0]).zfill(
-                4) + "_" + str(split_digit[1]).zfill(4) + '.htm'
+    # Special case where letters need a zfill of 5
+    if re.search('[a-zA-Z]', article_split[0]):
+        section_a = article_split[0].zfill(5)
     else:
-        # Check for articles
-        if '-' in section:
-            article_split = section.split('-')
+        section_a = article_split[0].zfill(4)
 
-            if re.search('[a-zA-Z]', article_split[0]):
-                section_url = article_split[0].zfill(
-                    5) + '-' + article_split[1].zfill(4) + '.htm'
-            else:
-                section_url = article_split[0].zfill(
-                    4) + '-' + article_split[1].zfill(4) + '.htm'
-        else:
-            section_url = section.zfill(4) + '.htm'
+    # Check if there is a digit
+    if len(digit_split) > 1:
+        section_b = digit_split[0].zfill(4)
+        section_digit = digit_split[1].zfill(4)
+        article_url = section_a + '-' + section_b + '_' + section_digit + '.htm'
+    else:
+        section_b = article_split[1].zfill(4)
+        article_url = section_a + '-' + section_b + '.htm'
 
-    baseURL = url.replace('.htm', section_url)
-    try:
-        html_to_parse = requests.get(baseURL)
-        soup = bs(html_to_parse.text, 'lxml')
-        # text_data = soup.find(
-        #     'div', {'class': 'WordSection1'})
-        text_data = soup.find('body')
-    except:
-        print("Connection possibly timed out on: " + url)
-        text_data = None
+    return article_url
+
+
+def create_section_url(base_url, section):
+    """ Helper function to get_section_text_data
+    :param base_url: The base chapter URL
+    :param section: The section number ex. 105, 105D, 105.5
+    :return: String of url to section
+    """
+
+    section_url = None
+    section = str(section)
+
+    # Check for Articles
+    if '-' in section:
+        section_url = create_article_url(section)
+
+    elif '.' in section:
+        split_digit = section.split('.')
+        section_url = split_digit[0].zfill(
+            4) + "_" + split_digit[1].zfill(4) + '.htm'
+    else:
+        section_url = section.zfill(4) + '.htm'
+
+    section_url = base_url.replace('.htm', section_url)
+    return section_url
+
+
+def get_section_text_data(url, section):
+    """ Driver function that gathers section text
+    :param url: The base chapter URL
+    :param section: The section number ex. 105, 105D, 105.5
+    :return: The text for a given section number.
+    """
+
+    text_data = None
+    section_url = create_section_url(url, section)
+
+    good = True
+    found = True
+
+    while text_data is None and found:
+        try:
+            html_to_parse = requests.get(section_url)
+            if html_to_parse.status_code == 404:
+                found = False
+                print(section_url + " not found.")
+            elif html_to_parse.status_code == 200:
+                soup = BeauSoup(html_to_parse.text, 'lxml')
+                if good is False:
+                    print("Reconnection to " + section_url + ". SUCCESSFUL...")
+                    good = True
+                text_data = soup.find('body')
+        except:
+            # Reconnect on connection timeout
+            time.sleep(.4625)
+            print("Connection timeout on: " +
+                  section_url + ". RECONNECTING...")
+            good = False
+            text_data = None
+
     if text_data is not None:
-        hrefs = text_data.find_all('a')
-
-        for href in hrefs:
-            href.decompose()
-
         text_data = text_data.get_text().replace('\r\n', ' ').strip()
 
     return text_data
 
 
-def appendSection(Sections, chapter_section, section_name, url):
+def append_section(sections, chapter_section, section_name, url):
     """ Appends a section to a parent Section list """
+    section = {"number": chapter_section[1],
+               "name": section_name}
+
+    text = None
+
     if url is not None and not no_text:
 
         # Check for excess text in section number string...
         excess_text = re.search(
-            "(\d+(\.\d)?[A-Z]?)([A-Z]{1}[a-z]+$)", chapter_section[1])
+            "(\d+(\.\d)?[A-Z]?)([A-Z][a-z]+$)", chapter_section[1])
 
         # ... and delete excess text if it exists
         if excess_text is not None:
-            chapter_section[1] = chapter_section[1].replace(excess_text.group(3), '')
+            chapter_section[1] = chapter_section[
+                1].replace(excess_text.group(3), '')
 
-        text = getSectionTextData(url, chapter_section[1])
-        section = {"number": chapter_section[1],
-                   "name": section_name}
+        text = get_section_text_data(url, chapter_section[1])
+
         if text is not None:
-            if "Page Not Found" in text:
-                print("Error 404 for: " +
-                      (chapter_section[0]) + '-' + chapter_section[1])
-            else:
-                # The code explains everything.
-                if ('§' + chapter_section[0] + u'\u2011' + chapter_section[1]) in text and section_name in text:
-                    text = text.replace(section_name + '.' if section_name[-1] != '.' else section_name, '')
-                    text = text.replace('§' + chapter_section[0] + u'\u2011' + chapter_section[1], '')
-                elif ('§' + chapter_section[0] + '-' + chapter_section[1]) in text and section_name in text:
-                    text = text.replace(section_name + '.' if section_name[-1] != '.' else section_name, '')
-                    text = text.replace('§' + chapter_section[0] + '-' + chapter_section[1], '')
-                else:
-                    if section_name in text:
-                        text = text.replace(section_name + '.' if section_name[-1] != '.' else section_name, '')
+            # The code explains everything.
+            sec_sym = re.search('\[?§' + chapter_section[0] + "." + chapter_section[1] + "\]?", text)
 
-                    if ('§' + chapter_section[0] + u'\u2011' + chapter_section[1]) in text:
-                        text = text.replace('§' + chapter_section[0] + u'\u2011' + chapter_section[1], '')
-                    elif ('§' + chapter_section[0] + '-' + chapter_section[1]) in text:
-                        text = text.replace('§' + chapter_section[0] + '-' + chapter_section[1], '')
-                    elif (chapter_section[0] + u'\u2011' + chapter_section[1]) in text:
-                        text = text.replace(chapter_section[0] + u'\u2011' + chapter_section[1], '')
-                    elif (chapter_section[0] + '-' + chapter_section[1]) in text:
-                        text = text.replace(chapter_section[0] + '-' + chapter_section[1], '')
+            if sec_sym is not None:
+                text = text.replace(sec_sym.group(0), '')
 
-                # Check for brackets
-                brackets = re.search('^\[\]', text)
-                if brackets is not None:
-                    text = text.replace(brackets.group(0), '')
-                elif '[' in text and text.find('[') == 0 and ']' in text:
-                    text = text[(text.find(']') + 1):]
-                elif '[' in text and text.find('[') == 0 and u'\u00a0' in text:
-                    text = text[(text.find(u'\u00a0') + 1):]
+            if section_name in text:
+                text = text.replace(
+                    section_name + '.' if section_name[-1] != '.' else section_name, '')
 
-                text = text.strip()
+            text = text.strip()
 
-                # Check for brackets again
-                brackets = re.search('^\[\]', text)
-                if brackets is not None:
-                    text = text.replace(brackets.group(0), '')
-                elif '[' in text and text.find('[') == 0 and ']' in text:
-                    text = text[(text.find(']') + 1):]
-                elif '[' in text and text.find('[') == 0 and u'\u00a0' in text:
-                    text = text[(text.find(u'\u00a0') + 1):]
+            brackets = re.search("^\[.*\]", text)
+            if brackets is not None:
+                text = text.replace(brackets.group(0), '')
 
-                section['text'] = text
-                Sections.append(section)
+            text = text.strip()
+
+            brackets = re.search("^]", text)
+            if brackets is not None:
+                text = text.replace(brackets.group(0), '')
+
+            text = text.strip()
 
         else:
             print("Error parsing text for: " +
                   (chapter_section[0]) + '-' + chapter_section[1])
 
-    else:
-        section = {"number": chapter_section[1],
-                   "name": section_name}
+    section['text'] = text
 
-        if not no_text:
-            section['text'] = None
-            Sections.append(section)
+    sections.append(section)
 
 
-def checkLine(currentLine):
-    retVal = True
-    blackList = ["Chapter", "Subtitle"]
+def check_line(current_line):
+    return_val = True
+    blacklist = ["Chapter", "Subtitle"]
 
-    for word in blackList:
-        if word in currentLine:
-            retVal = False
+    for word in blacklist:
+        if word in current_line:
+            return_val = False
 
-    return retVal
+    return return_val
 
 
-def wordCountSectionName(line):
+def word_count_section_name(line):
     # Because some miscellaneous info are also tagged as regular paragraphs, need a wordcount so that they don't
     # get added as a section name or appended to an existing one
     # Ex. HRS 84 number 43 and the tags the PREAMBLE is in
@@ -470,14 +525,14 @@ def wordCountSectionName(line):
     return count
 
 
-def scrapeTableOfContents():
-    baseURL = 'http://www.capitol.hawaii.gov/docs/HRS.htm'
-    html_to_parse = requests.get(baseURL)
-    soup = bs(html_to_parse.text, 'lxml')
+def scrape_toc():
+    base_url = 'http://www.capitol.hawaii.gov/docs/HRS.htm'
+    html_to_parse = requests.get(base_url)
+    soup = BeauSoup(html_to_parse.text, 'lxml')
 
-    Divisions = []
-    Titles = []
-    Chapters = []
+    divisions = []
+    titles = []
+    chapters = []
 
     current_division = {}
     current_title = {}
@@ -490,87 +545,86 @@ def scrapeTableOfContents():
     contents = soup.find_all('p', {'class': 'MsoNormal'})
 
     for content in contents:
-        currentLine = content.get_text().replace('\r\n ', "")
-        if checkLine(currentLine):
-            if "DIVISION" in currentLine:
-                if len(Titles) > 0:
-                    current_title["chapters"] = Chapters
-                    Titles.append(current_title)
+        current_line = content.get_text().replace('\r\n ', "")
+        if check_line(current_line):
+            if "DIVISION" in current_line:
+                if len(titles) > 0:
+                    current_title["chapters"] = chapters
+                    titles.append(current_title)
 
-                    current_division["titles"] = Titles
+                    current_division["titles"] = titles
                     current_division["number"] = division_number
                     division_number = division_number + 1
-                    Divisions.append(current_division)
+                    divisions.append(current_division)
 
                     current_division = {}
                     current_title = {}
                     current_chapter = {}
-                    Titles = []
-                    Chapters = []
+                    titles = []
+                    chapters = []
 
-                    current_division["name"] = currentLine
+                    current_division["name"] = current_line
                 else:
-                    current_division["name"] = currentLine
+                    current_division["name"] = current_line
 
-            elif "TITLE" in currentLine:
-                if len(Chapters) > 0:
-                    current_title["chapters"] = Chapters
-                    Titles.append(current_title)
+            elif "TITLE" in current_line:
+                if len(chapters) > 0:
+                    current_title["chapters"] = chapters
+                    titles.append(current_title)
 
                     current_title = {}
                     current_chapter = {}
-                    Chapters = []
+                    chapters = []
 
-                    current_title["name"] = currentLine
+                    current_title["name"] = current_line
                     title_number = re.search(
-                        '(([0-9]+)([A-Z]))|([0-9]+)', currentLine).group(0)
+                        '(([0-9]+)([A-Z])?)', current_line).group(0)
                     current_title["number"] = title_number
                 else:
-                    current_title["name"] = currentLine
+                    current_title["name"] = current_line
                     title_number = re.search(
-                        '(([0-9]+)([A-Z]))|([0-9]+)', currentLine).group(0)
+                        '(([0-9]+)([A-Z])?)', current_line).group(0)
                     current_title["number"] = title_number
             else:
                 if chapter_trigger == 0:
-                    current_chapter["number"] = currentLine
+                    current_chapter["number"] = current_line
                     current_chapter["name"] = ""
                     chapter_trigger = 1
 
                 elif chapter_trigger == 1:
-                    current_chapter["name"] = currentLine
-                    chapterUrl = content.a['href']
-                    Sections = scrapeSectionNames(chapterUrl)
-
-                    if Sections is not None:
+                    current_chapter["name"] = current_line
+                    chapter_url = content.a['href']
+                    sections = scrape_section_names(chapter_url)
+                    if sections is not None and len(sections) > 0:
                         current_chapter['repealed'] = False
-                        current_chapter['sections'] = Sections
+                        current_chapter['sections'] = sections
                     else:
                         current_chapter['repealed'] = True
 
-                    Chapters.append(current_chapter)
+                    chapters.append(current_chapter)
                     current_chapter = {}
                     chapter_trigger = 0
 
-    current_title["chapters"] = Chapters
-    Titles.append(current_title)
+    current_title["chapters"] = chapters
+    titles.append(current_title)
 
-    current_division["titles"] = Titles
+    current_division["titles"] = titles
     current_division["number"] = division_number
     division_number = division_number + 1
-    Divisions.append(current_division)
+    divisions.append(current_division)
 
-    return Divisions
+    return divisions
 
 
 def main():
-    Divisions = scrapeTableOfContents()
+    divisions = scrape_toc()
 
     file_name = 'output/' + version + '.json'
     if no_text:
         file_name = 'output/' + version + '_notext.json'
 
     outfile = open(file_name, 'w')
-    json.dump(Divisions, outfile, sort_keys=True,
+    json.dump(divisions, outfile, sort_keys=True,
               indent=4, separators=(',', ': '))
     print("Data scraped into " + file_name)
 

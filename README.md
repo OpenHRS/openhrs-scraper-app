@@ -23,18 +23,24 @@ python pip install -r requirements.txt
 ```
 python create_hrs_tree.py <notext> <hrs[current|year]>
 ```
-Given a year, (`current` for current year, Gregorian calendar year otherwise),
-it will output a file named `hrs[current|year][_notext].json`. When passed the
-`notext` option, it will scrape names statute names only.
+Given a year, it will output a file named `hrs[current|year][_notext].json`.
 
-Example 1:
+When passed the `notext` option, it will scrape names statute names only.
+
+Examples:
 ```
 python create_hrs_tree.py notext hrscurrent
 ```
-It will output a file named `hrscurrent.json` with all the current Divisions, Titles, Chapters, and Section names + numbers in a tree format.
+It will output a file named `hrscurrent.json` with all the current Divisions, Titles, Chapters, and Section names + numbers in a tree format. Notice the `notext` arg will not output section text.
 
-*Note: does not work for years 2005 and earlier*
 
+```
+python create_hrs_tree.py hrs2016
+```
+Similarly, will ouput a file named `hrs2016.json` with the data as `notext` along with section text.
+
+## Testing
+For development purposes only, testing scripts have been created named `testing_xxxx.py` where xxxx is the part to be tested. These scripts will output a similar json file named `testing_xxxx.py` with the resulting data.
 
 ## Plans
 1. Add support for:
@@ -44,5 +50,3 @@ It will output a file named `hrscurrent.json` with all the current Divisions, Ti
 * Parts
 
 Very few statutes are classified under these and it does not affect the overall statute data scraped.
-
-2. Scrape individual statutes and along with hrsTree, transform it into a file structure shown by example in the corresponding folder.
