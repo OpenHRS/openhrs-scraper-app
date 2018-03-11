@@ -1,9 +1,4 @@
-import json
-import requests
-import re
-import sys
-import math
-import time
+import sys, json, requests, re, math, time
 from bs4 import BeautifulSoup as BeauSoup
 
 no_text = False
@@ -23,24 +18,33 @@ VERSIONS = ['hrscurrent',
             'hrs2005',
             'hrs2004',
             'hrs2003',
-            'hrs2002']
+            'hrs2002',
+            'hrs2001',
+            'hrs2000',
+            'hrs1999']
 
 
 if len(sys.argv) > 1:
-    if sys.argv[1] == 'notext' and sys.argv[2] in VERSIONS:
-        version = sys.argv[2]
+    if sys.argv[1] == 'notext':
         no_text = True
-        print('Scraping ' + version + ' with no text')
+        if len(sys.argv) > 2:
+            if sys.argv[2] in VERSIONS:
+                version = sys.argv[2]
+            elif "hrs" + sys.argv[2] in VERSIONS:
+                version = "hrs" + sys.argv[2]
 
     elif sys.argv[1] in VERSIONS:
         version = sys.argv[1]
-        if len(sys.argv) > 2 and sys.argv[2] == 'notext':
-            no_text = True
-            print('Scraping ' + version + ' with no text')
-        else:
-            print('Scraping ' + version)
+        no_text = len(sys.argv) > 2 and sys.argv[2] == 'notext'
+    elif "hrs" + sys.argv[1] in VERSIONS:
+        version = ("hrs" + str(sys.argv[1]))
+        no_text = len(sys.argv) > 2 and sys.argv[2] == 'notext'
+
     else:
         print("No version was provided. Defaulting to hrscurrent")
+
+    print('Scraping ' + version + (' with no text' if no_text else ''))
+
 
 
 """ Line parsing functions
@@ -185,7 +189,7 @@ def repealed_in_check_multiples(sections, chapter, multilist):
 These functions handle individual section scraping and their dependencies
 
 Functions gather information from the HRS table of contents given
-by http://www.capitol.hawaii.gov/docs/HRS.htm and append appropriate section
+by https://www.capitol.hawaii.gov/docs/HRS.htm and append appropriate section
 data in a tree format by Division Title and Chapter.
 """
 
@@ -217,7 +221,7 @@ def prep_section_name_data(url):
 
                         bold_title.decompose()
 
-                if version in VERSIONS[-4:]:
+                if version in VERSIONS[-7:]:
                     return soup.find_all('p')
                 else:
                     return soup.find_all('p', {'class': 'RegularParagraphs'})
@@ -236,27 +240,46 @@ def get_valid_url(url):
     :param url: the URL to validate
     :return: original URL if valid, otherwise a valid URL
     """
-    return_url = url
-    valid = requests.get(return_url)
 
-    # If the URL is invalid, change URL to something similar
-    if valid.status_code == 404:
-        toc = requests.get('http://www.capitol.hawaii.gov/' + version)
+    # This is necessary until they refactor the links.
+    return_url = url.replace('http://', 'https://')
 
-        soup = BeauSoup(toc.text, 'lxml')
-        links = soup.find_all('a')
-        url_should_be_ok = False
-        for link in links:
-            if not url_should_be_ok:
-                href = link['href']
-                if href != '/':
-                    split_href = href.split("/")
-                    split_url = return_url.split("/")
-                    href_extr = split_href[2]
-                    url_extr = split_url[4]
-                    if href_extr.split("_")[0] == url_extr.split("_")[0]:
-                        return_url = return_url.replace(url_extr, href_extr)
-                        url_should_be_ok = True
+    tried = False
+
+    while not tried:
+        try:
+            valid = requests.get(return_url)
+
+            # If the URL is invalid, change URL to something similar
+            if valid.status_code == 404:
+                # I would politely request that you at least try to understand
+                # from a dev POV why I did the following instead of maintaining
+                # the readability of the code. After all, I shouldn't be blamed
+                # for any 404 errors thrown, is that not so? Mahaloz. \m/
+                toc = requests.get('https://www.capitol.hawaii.gov/' + ('hrscurrent/' if version == 'hrscurrent' else ('hrsarchive/' + version + "/")))
+
+                soup = BeauSoup(toc.text, 'lxml')
+                links = soup.find_all('a')
+                url_should_be_ok = False
+                for link in links:
+                    if not url_should_be_ok:
+                        href = link['href']
+                        if href != '/':
+                            split_href = href.split("/")
+                            split_url = return_url.split("/")
+                            href_extr = split_href[2] if len(split_href) <= 3 else split_href[3]
+                            url_extr = split_url[5]
+
+                            if len(href_extr) > 0:
+                                if href_extr.split("_")[0] == url_extr.split("_")[0]:
+                                    return_url = return_url.replace(url_extr, href_extr)
+                                    url_should_be_ok = True
+
+            tried = True
+        except (TimeoutError, requests.exceptions.ConnectionError):
+            print("Retrying " + return_url + " in 15 secs...")
+            time.sleep(15)
+            print("Retrying " + return_url)
 
     return return_url
 
@@ -325,8 +348,14 @@ def scrape_section_names(url):
     :param url: chapter URL
     :return: object containing section data of chapter specified in URL
     """
+
     sections = []
-    line_data = prep_section_name_data(get_valid_url(url.replace('hrscurrent', version)))
+    if version != 'hrscurrent':
+        url = url.replace('hrscurrent', 'hrsarchive/' + version)
+
+    valid_url = get_valid_url(url)
+
+    line_data = prep_section_name_data(valid_url)
     curr_section_name = ""
     curr_chapter_section = ""
 
@@ -434,9 +463,9 @@ def get_section_text_data(url, section):
                     print("Reconnection to " + section_url + ". SUCCESSFUL...")
                     good = True
                 text_data = soup.find('body')
-        except:
+        except (TimeoutError, requests.exceptions.ConnectionError):
             # Reconnect on connection timeout
-            time.sleep(.4625)
+            time.sleep(15)
             print("Connection timeout on: " +
                   section_url + ". RECONNECTING...")
             good = False
@@ -517,7 +546,7 @@ def word_count_section_name(line):
     # Because some miscellaneous info are also tagged as regular paragraphs, need a wordcount so that they don't
     # get added as a section name or appended to an existing one
     # Ex. HRS 84 number 43 and the tags the PREAMBLE is in
-    # http://www.capitol.hawaii.gov/hrscurrent/Vol02_Ch0046-0115/HRS0084/HRS_0084-.htm
+    # https://www.capitol.hawaii.gov/hrscurrent/Vol02_Ch0046-0115/HRS0084/HRS_0084-.htm
     words = line.split()
     count = 0
     for word in words:
@@ -526,7 +555,7 @@ def word_count_section_name(line):
 
 
 def scrape_toc():
-    base_url = 'http://www.capitol.hawaii.gov/docs/HRS.htm'
+    base_url = 'https://www.capitol.hawaii.gov/docs/HRS.htm'
     html_to_parse = requests.get(base_url)
     soup = BeauSoup(html_to_parse.text, 'lxml')
 

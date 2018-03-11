@@ -1,9 +1,4 @@
-import sys
-import json
-import requests
-import re
-import os
-import json
+import sys, json, requests, re, os
 
 VERSIONS = ['hrscurrent',
             'hrs2016',
@@ -20,12 +15,15 @@ VERSIONS = ['hrscurrent',
             'hrs2005',
             'hrs2004',
             'hrs2003',
-            'hrs2002']
+            'hrs2002',
+            'hrs2001',
+            'hrs2000',
+            'hrs1999']
 
 filename = ''
 
-if len(sys.argv) > 1 and sys.argv[1] in VERSIONS:
-    filename = sys.argv[1]
+if len(sys.argv) > 1 and (sys.argv[1] in VERSIONS or "hrs" + sys.argv[1] in VERSIONS):
+    filename = sys.argv[1] if sys.argv[1] in VERSIONS else ("hrs" + sys.argv[1])
 else:
     print("BAD PARAMETER")
     exit(1)
