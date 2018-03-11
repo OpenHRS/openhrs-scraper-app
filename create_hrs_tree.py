@@ -267,12 +267,13 @@ def get_valid_url(url):
                         if href != '/':
                             split_href = href.split("/")
                             split_url = return_url.split("/")
-                            href_extr = split_href[2]
-                            url_extr = split_url[4]
+                            href_extr = split_href[2] if len(split_href) <= 3 else split_href[3]
+                            url_extr = split_url[5]
 
-                            if href_extr.split("_")[0] == url_extr.split("_")[0]:
-                                return_url = return_url.replace(url_extr, href_extr)
-                                url_should_be_ok = True
+                            if len(href_extr) > 0:
+                                if href_extr.split("_")[0] == url_extr.split("_")[0]:
+                                    return_url = return_url.replace(url_extr, href_extr)
+                                    url_should_be_ok = True
 
             tried = True
         except (TimeoutError, requests.exceptions.ConnectionError):
@@ -352,7 +353,9 @@ def scrape_section_names(url):
     if version != 'hrscurrent':
         url = url.replace('hrscurrent', 'hrsarchive/' + version)
 
-    line_data = prep_section_name_data(get_valid_url(url))
+    valid_url = get_valid_url(url)
+
+    line_data = prep_section_name_data(valid_url)
     curr_section_name = ""
     curr_chapter_section = ""
 
