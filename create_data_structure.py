@@ -30,6 +30,7 @@ else:
     print("BAD PARAMETER")
     exit(1)
 
+
 def main():
     with open('output/' + filename + '.json') as hrs_tree:
         hrs_data = json.load(hrs_tree)
@@ -63,7 +64,8 @@ def create_path(division, title, chapter, section):
                     'number': chapter['number'],
                     'repealed': chapter['repealed']}
 
-    path = 'output/' + filename + '/division/{}/title/{}/chapter/{}/section/'.format(
+    path = 'output/' + filename
+    path += '/division/{}/title/{}/chapter/{}/section/'.format(
         division['number'], title['number'], chapter['number'])
 
     if not os.path.exists(path):
@@ -74,14 +76,18 @@ def create_path(division, title, chapter, section):
     json.dump(division_json, outfile, sort_keys=True,
               indent=4, separators=(',', ': '))
 
-    outfile = open('output/' + filename + '/division/' + str(division['number']) +
-                   '/title/' + str(title['number']) + '.json', 'w')
+    outfile = open(
+        'output/' + filename + '/division/' + str(division['number']) +
+        '/title/' + str(title['number']) + '.json', 'w')
+
     json.dump(title_json, outfile, sort_keys=True,
               indent=4, separators=(',', ': '))
 
-    outfile = open('output/' + filename + '/division/' + str(division['number']) +
-                   '/title/' + str(title['number']) +
-                   '/chapter/' + str(chapter['number']) + '.json', 'w')
+    outfile = open(
+        'output/' + filename + '/division/' + str(division['number']) +
+        '/title/' + str(title['number']) +
+        '/chapter/' + str(chapter['number']) + '.json', 'w')
+
     json.dump(chapter_json, outfile, sort_keys=True,
               indent=4, separators=(',', ': '))
 
@@ -91,10 +97,12 @@ def create_path(division, title, chapter, section):
                             'number': section['number'],
                             'text': section['text']}
 
-            outfile = open('output/' + filename + '/division/' + str(division['number']) +
-                           '/title/' + str(title['number']) +
-                           '/chapter/' + str(chapter['number']) +
-                           '/section/' + str(chapter['number']) + '-' + str(section['number']) + '.json', 'w')
+            outfile = open(
+                'output/' + filename + '/division/' + str(division['number']) +
+                '/title/' + str(title['number']) + '/chapter/' +
+                str(chapter['number']) + '/section/' + str(chapter['number']) +
+                '-' + str(section['number']) + '.json', 'w')
+
             json.dump(section_json, outfile, sort_keys=True,
                       indent=4, separators=(',', ': '))
         except:
