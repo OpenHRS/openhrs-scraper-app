@@ -72,11 +72,6 @@ def check_text(line):
 
     blacklist = ["CHAPTER", "Part", "Section"]
 
-    rgx_check = re.search('([A-Z])\. +(\w+)', line)
-
-    if rgx_check is not None:
-        is_okay = False
-
     if line == "":
         is_okay = False
     else:
@@ -155,9 +150,7 @@ def check_multiples(sections, curr_chapter_section, curr_section_name):
                         append_section(sections, [chapter, floatstrip(
                             curr_section)], 'Repealed', None)
                     curr_section += increment
-                    if increment == .1:
-                        if re.search('\.\d{2,}$', str(curr_section)) is not None:
-                            curr_section = round(curr_section, 1)
+                    curr_section = round(curr_section, 1)
 
             found_multiples = True
 
@@ -174,7 +167,7 @@ def repealed_in_check_multiples(sections, chapter, multilist):
     # names
     length = len(multilist) - 1
     for x in range(1, length):
-        if re.search('^\d+(\.\d+)?$', multilist[x]) is not None:
+        if '.' in multilist[x]:
             new_section = float(multilist[x])
             new_section = floatstrip(new_section)
             append_section(sections, [chapter, new_section], 'Repealed', None)
@@ -185,7 +178,7 @@ def repealed_in_check_multiples(sections, chapter, multilist):
 These functions handle individual section scraping and their dependencies
 
 Functions gather information from the HRS table of contents given
-by http://www.capitol.hawaii.gov/docs/HRS.htm and append appropriate section
+by https://www.capitol.hawaii.gov/docs/HRS.htm and append appropriate section
 data in a tree format by Division Title and Chapter.
 """
 
@@ -241,7 +234,7 @@ def get_valid_url(url):
 
     # If the URL is invalid, change URL to something similar
     if valid.status_code == 404:
-        toc = requests.get('http://www.capitol.hawaii.gov/' + version)
+        toc = requests.get('https://www.capitol.hawaii.gov/' + (version if version == 'hrscurrent' else ("hrsarchive/" + version)))
 
         soup = BeauSoup(toc.text, 'lxml')
         links = soup.find_all('a')
@@ -268,8 +261,8 @@ def get_chapter_section(string):
     chap_sec = []
 
     # Check if chapter-section contains a colon
-    get_colon = re.search("^\d+:", string)
-    if get_colon is not None:
+    get_colon = string.find(':')
+    if get_colon > -1:
         chap_sec = string.split(':')
     else:
         chap_sec = string.split('-')
@@ -293,30 +286,10 @@ def process_line(line):
     """
     sec_name = ""
     chap_sec = ""
-    rgx_code = re.search('(\d+:)?(\d+\w?)-((\d+\.)?(\d+\w?)?)', line)
+    rgx_code = re.match('\d+\w?-((\d+\.)?(\d+\w?)?) .*', line)
     if rgx_code is not None:
         # The section name is the current line - the statute code
-        sec_name = line.replace(rgx_code.group(0), '').strip()
-        chap_sec = get_chapter_section(rgx_code.group(0))
-
-        extra_text = re.search(
-            '(\d+[A-Z]?-\d+(\.\d)?[A-Z]?)([A-Z][a-z]+$)', line)
-        if extra_text is not None:
-            line = line.replace(
-                extra_text.group(1), extra_text.group(1) + ' ')
-
-        # If the section name begins with /\d+ / delete it
-        sec_name_begin_1 = re.search('(^\d+ )', sec_name)
-        if sec_name_begin_1 is not None:
-            sec_name = sec_name.replace(sec_name_begin_1.group(0), "")
-
-        chap_sec_end = re.search('[A-Z]$', chap_sec[1])
-        sec_name_begin = re.search('^[a-z]{3,}', sec_name)
-
-        # If chapter-section ends with first letter of the actual section name
-        if chap_sec_end is not None and sec_name_begin is not None:
-            sec_name = chap_sec[1][-1] + sec_name
-            chap_sec[1] = chap_sec[1][:-1]
+        chap_sec, sec_name = line.split(' ', 1)
 
     return [sec_name, chap_sec]
 
@@ -326,7 +299,7 @@ def scrape_section_names(url):
     :return: object containing section data of chapter specified in URL
     """
     sections = []
-    line_data = prep_section_name_data(get_valid_url(url.replace('hrscurrent', version)))
+    line_data = prep_section_name_data(get_valid_url(url.replace('hrscurrent', version if version == 'hrscurrent' else ('hrsarchive/' + version))))
     curr_section_name = ""
     curr_chapter_section = ""
 
@@ -336,7 +309,7 @@ def scrape_section_names(url):
             clean_line = cleanup_text(line).strip()
             proc_line = process_line(clean_line)
             if proc_line[0] != "" and proc_line[1] != "":
-                clean_buffer(sections, curr_chapter_section, curr_section_name, url)
+                clean_buffer(sections, curr_chapter_section, curr_section_name, url.replace('hrscurrent', version if version == 'hrscurrent' else ('hrsarchive/' + version)))
                 curr_section_name = proc_line[0]
                 curr_chapter_section = proc_line[1]
                 # Check if there are multiple statutes in a line
@@ -349,7 +322,7 @@ def scrape_section_names(url):
                 curr_section_name += " " + clean_line
 
         # Check for anything left in the buffer
-        clean_buffer(sections, curr_chapter_section, curr_section_name, url)
+        clean_buffer(sections, curr_chapter_section, curr_section_name, url.replace('hrscurrent', version if version == 'hrscurrent' else ('hrsarchive/' + version)))
 
     # If nothing was scraped then the whole chapter was actually repealed
     elif "REPEALED" in curr_section_name:
@@ -450,30 +423,28 @@ def get_section_text_data(url, section):
 
 def append_section(sections, chapter_section, section_name, url):
     """ Appends a section to a parent Section list """
+
+    if type(chapter_section) is str:
+        if re.match('\d+\w?\-\d+(\.\d+)?', chapter_section) is not None:
+            chapter_section = chapter_section.split('-')
+
+    match_or_not = re.match('\d+(\.\d+)?', chapter_section[1])
+
+    if match_or_not is None:
+        if chapter_section[1][-1] == '.':
+            chapter_section[1] = chapter_section[1][0:-1]
+
     section = {"number": chapter_section[1],
                "name": section_name}
 
     text = None
 
     if url is not None and not no_text:
-
-        # Check for excess text in section number string...
-        excess_text = re.search(
-            "(\d+(\.\d)?[A-Z]?)([A-Z][a-z]+$)", chapter_section[1])
-
-        # ... and delete excess text if it exists
-        if excess_text is not None:
-            chapter_section[1] = chapter_section[
-                1].replace(excess_text.group(3), '')
-
         text = get_section_text_data(url, chapter_section[1])
 
         if text is not None:
-            # The code explains everything.
-            sec_sym = re.search('\[?§' + chapter_section[0] + "." + chapter_section[1] + "\]?", text)
-
-            if sec_sym is not None:
-                text = text.replace(sec_sym.group(0), '')
+            text = text.replace(
+                '§' + chapter_section[0] + "-" + chapter_section[1], '')
 
             if section_name in text:
                 text = text.replace(
@@ -481,15 +452,9 @@ def append_section(sections, chapter_section, section_name, url):
 
             text = text.strip()
 
-            brackets = re.search("^\[.*\]", text)
-            if brackets is not None:
-                text = text.replace(brackets.group(0), '')
-
-            text = text.strip()
-
-            brackets = re.search("^]", text)
-            if brackets is not None:
-                text = text.replace(brackets.group(0), '')
+            right_bracket_index = text.find("]")
+            if text.startswith("[") and right_bracket_index > -1:
+                text = text[right_bracket_index + 1:]
 
             text = text.strip()
 
@@ -517,7 +482,7 @@ def word_count_section_name(line):
     # Because some miscellaneous info are also tagged as regular paragraphs, need a wordcount so that they don't
     # get added as a section name or appended to an existing one
     # Ex. HRS 84 number 43 and the tags the PREAMBLE is in
-    # http://www.capitol.hawaii.gov/hrscurrent/Vol02_Ch0046-0115/HRS0084/HRS_0084-.htm
+    # https://www.capitol.hawaii.gov/hrscurrent/Vol02_Ch0046-0115/HRS0084/HRS_0084-.htm
     words = line.split()
     count = 0
     for word in words:
@@ -526,7 +491,7 @@ def word_count_section_name(line):
 
 
 def scrape_toc():
-    base_url = 'http://www.capitol.hawaii.gov/docs/HRS.htm'
+    base_url = 'https://www.capitol.hawaii.gov/docs/HRS.htm'
     html_to_parse = requests.get(base_url)
     soup = BeauSoup(html_to_parse.text, 'lxml')
 
@@ -576,15 +541,10 @@ def scrape_toc():
                     current_chapter = {}
                     chapters = []
 
-                    current_title["name"] = current_line
-                    title_number = re.search(
-                        '(([0-9]+)([A-Z])?)', current_line).group(0)
-                    current_title["number"] = title_number
-                else:
-                    current_title["name"] = current_line
-                    title_number = re.search(
-                        '(([0-9]+)([A-Z])?)', current_line).group(0)
-                    current_title["number"] = title_number
+                current_title["name"] = current_line
+                title_number = re.search(
+                    '(([0-9]+)([A-Z])?)', current_line).group(0)
+                current_title["number"] = title_number
             else:
                 if chapter_trigger == 0:
                     current_chapter["number"] = current_line
