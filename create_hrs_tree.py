@@ -167,7 +167,7 @@ def repealed_in_check_multiples(sections, chapter, multilist):
     # names
     length = len(multilist) - 1
     for x in range(1, length):
-        if '.' in multilist[x]:
+        if re.match('\d+(\.\d+)?', multilist[x]) is not None:
             new_section = float(multilist[x])
             new_section = floatstrip(new_section)
             append_section(sections, [chapter, new_section], 'Repealed', None)
@@ -290,6 +290,7 @@ def process_line(line):
     if rgx_code is not None:
         # The section name is the current line - the statute code
         chap_sec, sec_name = line.split(' ', 1)
+        chap_sec = get_chapter_section(chap_sec)
 
     return [sec_name, chap_sec]
 
@@ -423,11 +424,6 @@ def get_section_text_data(url, section):
 
 def append_section(sections, chapter_section, section_name, url):
     """ Appends a section to a parent Section list """
-
-    if type(chapter_section) is str:
-        if re.match('\d+\w?\-\d+(\.\d+)?', chapter_section) is not None:
-            chapter_section = chapter_section.split('-')
-
     match_or_not = re.match('\d+(\.\d+)?', chapter_section[1])
 
     if match_or_not is None:
